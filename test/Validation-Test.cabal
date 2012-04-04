@@ -1,23 +1,23 @@
-Name:               Haskell-Package-Demo
-Version:            0.0.1
+Name:               Validation-Test
+Version:            0.1.0
 Author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ>
 Maintainer:         Tony Morris
 Copyright:          Tony Morris
-Synopsis:           A skeleton for demonstrating haskell packages
+Synopsis:           Testing A data-type like Either but with an accumulating Applicative
 Category:           Development
-Description:        A skeleton for demonstrating haskell packages
-Homepage:           https://github.com/tonymorris/haskell-package
+Description:        Testing A data-type like Either but with an accumulating Applicative
+Homepage:           https://github.com/tonymorris/validation
 Cabal-Version:      >= 1.6
 Build-Type:         Simple
 
 Source-Repository   head
   Type:             git
-  Location:         git@github.com:tonymorris/haskell-package.git
+  Location:         git@github.com:tonymorris/validation.git
 
 Flag                small_base
   Description:      Choose the new, split-up base package.
 
-Executable          package-demo
+Executable          validation-test
   Hs-Source-Dirs:  
                     ../src src
 
@@ -32,4 +32,8 @@ Executable          package-demo
   
   Build-Depends:  
                    base < 5 && >= 3
+                   , QuickCheck
+                   , test-framework
+                   , test-framework-quickcheck2
+                   , test-framework-hunit
 

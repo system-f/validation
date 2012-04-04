@@ -3,8 +3,8 @@ Version of workspace file format:
 Time of storage:
                "Mon Jan 10 08:54:11 EST 2012"
 Name of the workspace:
-               "Package"
+               "Validation"
 File paths of contained packages:
-               ["Package.cabal"]
+               ["Validation.cabal"]
 Maybe file path of an active package:
-               Just "Package.cabal"
+               Just "Validation.cabal"

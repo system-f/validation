@@ -1,0 +1,34 @@
+Name:               Validation
+Version:            0.1.0
+License:            BSD3
+License-File:       LICENSE
+Author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ>, Nick Partridge
+Maintainer:         Tony Morris, Nick Partridge
+Copyright:          Tony Morris, Nick Partridge
+Synopsis:           A data-type like Either but with an accumulating Applicative
+Category:           Data
+Description:        A data-type like Either but with an accumulating Applicative
+Homepage:           https://github.com/tonymorris/validation
+Cabal-Version:      >= 1.6
+Build-Type:         Simple
+
+Source-Repository   head
+  Type:             git
+  Location:         git@github.com:tonymorris/validation.git
+
+Flag                small_base
+  Description:      Choose the new, split-up base package.
+
+Library
+  Build-Depends:
+                    base < 5 && >= 3
+
+  GHC-Options:
+                    -Wall
+
+  Hs-Source-Dirs:
+                    src
+
+  Exposed-Modules:
+                    M
+
