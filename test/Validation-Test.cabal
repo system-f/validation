@@ -32,6 +32,8 @@ Executable          validation-test
   
   Build-Depends:  
                    base < 5 && >= 3
+                   , semigroups
+                   , pointed
                    , QuickCheck
                    , test-framework
                    , test-framework-quickcheck2

@@ -16,7 +16,8 @@ module Data.Validation
 , getSuccessOr
 ) where
 
-import Control.Functor.Pointed
+import Data.Pointed
+import Data.Copointed
 import Control.Applicative
 import Data.Semigroup
 import Data.Maybe
@@ -48,7 +49,7 @@ instance Pointed (AccValidation err) where
 
 instance Semigroup err => Applicative (AccValidation err) where
   pure = point
-  AccFailure e1 <*> AccFailure e2 = AccFailure (e1 .++. e2)
+  AccFailure e1 <*> AccFailure e2 = AccFailure (e1 <> e2)
   AccFailure e1 <*> AccSuccess _  = AccFailure e1
   AccSuccess _  <*> AccFailure e2 = AccFailure e2
   AccSuccess f  <*> AccSuccess a  = AccSuccess (f a)
@@ -153,7 +154,7 @@ instance FoldValidate Validation where
 
 instance Copointed m => FoldValidate (ValidationT m) where
   foldValidate f z (ValidationT v) =
-    foldValidate f z (extract v)
+    foldValidate f z (copoint v)
 
 -- | Returns the failure value or runs the given function on the success value to get a failure value.
 fromFailure ::

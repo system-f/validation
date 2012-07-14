@@ -1,6 +1,6 @@
 module Main where
 
-import qualified M.Tests
+import qualified Data.Validation.Tests
 import Test.Framework
 
 main ::
@@ -12,9 +12,6 @@ tests ::
   [Test]
 tests =
   [
-    testGroup "Tests"
-      [
-        M.Tests.test
-      ]
+    testGroup "Tests" Data.Validation.Tests.validationTests
   ]
 

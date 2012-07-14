@@ -1,10 +1,10 @@
-module Test.Data.Validation where
+module Data.Validation.Tests where
 
 import Test.QuickCheck
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Data.Validation
-import Control.Functor.Pointed
+import Data.Pointed
 
 instance (Arbitrary err, Arbitrary a) =>  Arbitrary (Validation err a) where
   arbitrary =

@@ -22,6 +22,8 @@ Flag                small_base
 Library
   Build-Depends:
                     base < 5 && >= 3
+                    , semigroups
+                    , pointed 
 
   GHC-Options:
                     -Wall
@@ -30,5 +32,4 @@ Library
                     src
 
   Exposed-Modules:
-                    M
-
+                    Data.Validation
