@@ -7,22 +7,20 @@ module Data.Validation
 , Validation
 , ValidationT(..)
 , Validate(..)
-, FoldValidate(..)
-, fromFailure
-, fromSuccess
-, getFailure
-, getSuccess
-, getFailureOr
-, getSuccessOr
 ) where
 
-import Data.Pointed
-import Data.Copointed
 import Control.Applicative
+import Data.Foldable
+import Data.Traversable
+import Data.Bifunctor
+import Data.Bifoldable
+import Data.Bitraversable
+import Data.Functor.Bind
+import Data.Functor.Alt
 import Data.Semigroup
-import Data.Maybe
 import Data.Typeable
 import Data.Data
+import Prelude hiding (foldr)
 
 -- | A value of the type @err@ or @a@, however, the @Applicative@ instance
 -- accumulates values. This is witnessed by the @Semigroup@ context on the instance.
@@ -41,18 +39,92 @@ data AccValidation err a =
   deriving (Eq, Ord, Show, Data, Typeable)
 
 instance Functor (AccValidation err) where
-  fmap _ (AccFailure e) = AccFailure e
-  fmap f (AccSuccess a) = AccSuccess (f a)
+  fmap _ (AccFailure e) =
+    AccFailure e
+  fmap f (AccSuccess a) =
+    AccSuccess (f a)
 
-instance Pointed (AccValidation err) where
-  point = AccSuccess
+instance Semigroup err => Apply (AccValidation err) where
+  AccFailure e1 <.> AccFailure e2 =
+    AccFailure (e1 <> e2)
+  AccFailure e1 <.> AccSuccess _  =
+    AccFailure e1
+  AccSuccess _  <.> AccFailure e2 =
+    AccFailure e2
+  AccSuccess f  <.> AccSuccess a  =
+    AccSuccess (f a)
 
 instance Semigroup err => Applicative (AccValidation err) where
-  pure = point
-  AccFailure e1 <*> AccFailure e2 = AccFailure (e1 <> e2)
-  AccFailure e1 <*> AccSuccess _  = AccFailure e1
-  AccSuccess _  <*> AccFailure e2 = AccFailure e2
-  AccSuccess f  <*> AccSuccess a  = AccSuccess (f a)
+  pure =
+    AccSuccess
+  (<*>) =
+    (<.>)
+
+instance Semigroup err => Alt (AccValidation err) where
+  AccFailure _ <!> x =
+    x
+  AccSuccess a <!> _ =
+    AccSuccess a
+
+instance (Semigroup err, Monoid err) => Alternative (AccValidation err) where
+  AccFailure _ <|> x =
+    x
+  AccSuccess a <|> _ =
+    AccSuccess a
+  empty =
+    AccFailure mempty
+
+instance Foldable (AccValidation err) where
+  foldr f x (AccSuccess a) =
+    f a x
+  foldr _ x (AccFailure _) =
+    x
+
+instance Traversable (AccValidation err) where
+  traverse f (AccSuccess a) =
+    AccSuccess <$> f a
+  traverse _ (AccFailure e) =
+    pure (AccFailure e)
+
+instance Bifunctor AccValidation where
+  bimap f _ (AccFailure e) =
+    AccFailure (f e)
+  bimap _ g (AccSuccess a) =
+    AccSuccess (g a)
+
+instance Bifoldable AccValidation where
+  bifoldr _ g x (AccSuccess a) =
+    g a x
+  bifoldr f _ x (AccFailure e) =
+    f e x
+
+instance Bitraversable AccValidation where
+  bitraverse _ g (AccSuccess a) =
+    AccSuccess <$> g a
+  bitraverse f _ (AccFailure e) =
+    AccFailure <$> f e
+
+instance Semigroup e => Semigroup (AccValidation e a) where
+  AccFailure e1 <> AccFailure e2 =
+    AccFailure (e1 <> e2)
+  AccFailure _ <> AccSuccess a2  =
+    AccSuccess a2
+  AccSuccess a1  <> AccFailure _ =
+    AccSuccess a1
+  AccSuccess a1 <> AccSuccess _ =
+    AccSuccess a1
+
+instance Monoid e => Monoid (AccValidation e a) where
+  AccFailure e1 `mappend` AccFailure e2 =
+    AccFailure (e1 `mappend` e2)
+  AccFailure _ `mappend` AccSuccess a2  =
+    AccSuccess a2
+  AccSuccess a1  `mappend` AccFailure _ =
+    AccSuccess a1
+  AccSuccess a1 `mappend` AccSuccess _ =
+    AccSuccess a1
+  mempty =
+    AccFailure mempty
 
 -- | A value of the type @err@ or @a@ and isomorphic to @Data.Either@.
 data Validation err a =
@@ -64,20 +136,77 @@ instance Functor (Validation err) where
   fmap _ (Failure e) = Failure e
   fmap f (Success a) = Success (f a)
 
-instance Pointed (Validation err) where
-  point = Success
+instance Apply (Validation err) where
+  Failure e1 <.> Failure _  =
+    Failure e1
+  Failure e1 <.> Success _  =
+    Failure e1
+  Success _  <.> Failure e2 =
+    Failure e2
+  Success f  <.> Success a  =
+    Success (f a)
 
 instance Applicative (Validation err) where
-  pure = point
-  Failure e1 <*> Failure _  = Failure e1
-  Failure e1 <*> Success _  = Failure e1
-  Success _  <*> Failure e2 = Failure e2
-  Success f  <*> Success a  = Success (f a)
+  pure =
+    Success
+  (<*>) =
+    (<.>)
+
+instance Alt (Validation err) where
+  Failure _ <!> x =
+    x
+  Success a <!> _ =
+    Success a
+
+instance Monoid err => Alternative (Validation err) where
+  Failure _ <|> x =
+    x
+  Success a <|> _ =
+    Success a
+  empty =
+    Failure mempty
+
+instance Foldable (Validation err) where
+  foldr f x (Success a) =
+    f a x
+  foldr _ x (Failure _) =
+    x
+
+instance Traversable (Validation err) where
+  traverse f (Success a) =
+    Success <$> f a
+  traverse _ (Failure e) =
+    pure (Failure e)
+
+instance Bifunctor Validation where
+  bimap f _ (Failure e) =
+    Failure (f e)
+  bimap _ g (Success a) =
+    Success (g a)
+
+instance Bifoldable Validation where
+  bifoldr _ g x (Success a) =
+    g a x
+  bifoldr f _ x (Failure e) =
+    f e x
+
+instance Bitraversable Validation where
+  bitraverse _ g (Success a) =
+    Success <$> g a
+  bitraverse f _ (Failure e) =
+    Failure <$> f e
+
+instance Bind (Validation err) where
+  Failure e >>- _ =
+    Failure e
+  Success a >>- f =
+    f a
 
 instance Monad (Validation err) where
-  return = point
-  Failure e >>= _ = Failure e
-  Success a >>= f = f a
+  return =
+    Success
+  (>>=) =
+    (>>-)
 
 -- | The transformer version of @Validation@.
 data ValidationT m err a =
@@ -89,18 +218,63 @@ instance Functor m => Functor (ValidationT m err) where
   fmap f (ValidationT k) =
     ValidationT (fmap (fmap f) k)
 
-instance Pointed m => Pointed (ValidationT m err) where
-  point = ValidationT . point . point
+instance Apply m => Apply (ValidationT m err) where
+  ValidationT f <.> ValidationT a =
+    ValidationT (liftF2 (<.>) f a)
 
 instance Applicative m => Applicative (ValidationT m err) where
-  pure = ValidationT . pure . point
-  ValidationT f <*> ValidationT a = ValidationT (liftA2 (<*>) f a)
+  pure =
+    ValidationT . pure . pure
+  ValidationT f <*> ValidationT a =
+    ValidationT (liftA2 (<*>) f a)
+
+instance (Functor m, Monad m) => Alt (ValidationT m err) where
+  ValidationT x <!> ValidationT y =
+    ValidationT (x >>= \q -> case q of
+      Failure _ -> y
+      Success a -> return (Success a))
+
+instance (Applicative m, Monad m, Monoid err) => Alternative (ValidationT m err) where
+  ValidationT x <|> ValidationT y =
+    ValidationT (x >>= \q -> case q of
+      Failure _ -> y
+      Success a -> return (Success a))
+  empty =
+    ValidationT (pure (Failure mempty))
+
+instance Foldable m => Foldable (ValidationT m err) where
+  foldr f z (ValidationT x) =
+    foldr (flip (foldr f)) z x
+
+instance Traversable m => Traversable (ValidationT m err) where
+  traverse f (ValidationT x) =
+      ValidationT <$> traverse (traverse f) x
+
+instance Functor m => Bifunctor (ValidationT m) where
+  bimap f g (ValidationT x) =
+    ValidationT (fmap (bimap f g) x)
+
+instance Foldable m => Bifoldable (ValidationT m) where
+  bifoldr f g z (ValidationT x) =
+    foldr (flip (bifoldr f g)) z x
+
+instance Traversable m => Bitraversable (ValidationT m) where
+  bitraverse f g (ValidationT x) =
+    ValidationT <$> traverse (bitraverse f g) x
+
+instance (Apply m, Monad m) => Bind (ValidationT m err) where
+  ValidationT v >>- f =
+    ValidationT (v >>= \w -> case w of
+                               Failure e -> return (Failure e)
+                               Success a -> runValidationT (f a))
 
 instance Monad m => Monad (ValidationT m err) where
-  return = ValidationT . return . point
-  ValidationT v >>= f = ValidationT (v >>= \w -> case w
-                                                 of Failure e -> return (Failure e)
-                                                    Success a -> runValidationT (f a))
+  return =
+    ValidationT . return . pure
+  ValidationT v >>= f =
+    ValidationT (v >>= \w -> case w of
+                               Failure e -> return (Failure e)
+                               Success a -> runValidationT (f a))
 
 -- | Construction for validation values.
 class Validate v where
@@ -114,97 +288,19 @@ class Validate v where
     -> v err a
 
 instance Validate AccValidation where
-  success =
-    point
   failure =
     AccFailure
+  success =
+    AccSuccess
 
 instance Validate Validation where
-  success =
-    point
   failure =
     Failure
-
-instance Pointed m => Validate (ValidationT m) where
   success =
-    ValidationT . point . success
+    Success
+
+instance Applicative m => Validate (ValidationT m) where
   failure =
-    ValidationT . point . failure
-
--- | Reduction for validation values.
-class FoldValidate v where
-  -- | Reduce a validation value /(catamorphism)/.
-  foldValidate ::
-    (err -> x) -- ^ The function to run if a failure value.
-    -> (a -> x) -- ^ The function to run if a success value.
-    -> v err a -- ^ The validation value.
-    -> x
-
-instance FoldValidate AccValidation where
-  foldValidate f _ (AccFailure err) =
-    f err
-  foldValidate _ g (AccSuccess a) =
-    g a
-
-instance FoldValidate Validation where
-  foldValidate f _ (Failure err) =
-    f err
-  foldValidate _ g (Success a) =
-    g a
-
-instance Copointed m => FoldValidate (ValidationT m) where
-  foldValidate f z (ValidationT v) =
-    foldValidate f z (copoint v)
-
--- | Returns the failure value or runs the given function on the success value to get a failure value.
-fromFailure ::
-  FoldValidate v =>
-  (a -> err) -- ^ The function to run on the success value.
-  -> v err a
-  -> err
-fromFailure =
-  foldValidate id
-
--- | Returns the success value or runs the given function on the failure value to get a success value.
-fromSuccess ::
-  FoldValidate v =>
-  (err -> a) -- ^ The function to run on the failure value.
-  -> v err a
-  -> a
-fromSuccess =
-  flip foldValidate id
-
--- | Returns the possible failure value if there is one.
-getFailure ::
-  FoldValidate v =>
-  v err a
-  -> Maybe err
-getFailure =
-  foldValidate Just (const Nothing)
-
--- | Returns the possible success value if there is one.
-getSuccess ::
-  FoldValidate v =>
-  v err a
-  -> Maybe a
-getSuccess =
-  foldValidate (const Nothing) Just
-
--- | Returns the failure value if there is one, otherwise returns the given default.
-getFailureOr ::
-  FoldValidate v =>
-  err -- ^ The default to return if there is no failure value to return.
-  -> v err a
-  -> err
-getFailureOr e =
-  fromMaybe e . getFailure
-
--- | Returns the success value if there is one, otherwise returns the given default.
-getSuccessOr ::
-  FoldValidate v =>
-  a -- ^ The default to return if there is no success value to return.
-  -> v err a
-  -> a
-getSuccessOr a =
-  fromMaybe a . getSuccess
-
+    ValidationT . pure . failure
+  success =
+    ValidationT . pure . success

@@ -22,8 +22,9 @@ Flag                small_base
 Library
   Build-Depends:
                     base < 5 && >= 3
-                    , semigroups
-                    , pointed 
+                    , semigroups >= 0.8 && < 0.9
+                    , semigroupoids == 3.0
+                    , bifunctors == 3.0
 
   GHC-Options:
                     -Wall

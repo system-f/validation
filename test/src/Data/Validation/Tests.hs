@@ -1,22 +1,24 @@
 module Data.Validation.Tests where
 
+import Control.Applicative
 import Test.QuickCheck
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Data.Semigroup
 import Data.Validation
-import Data.Pointed
-
-instance (Arbitrary err, Arbitrary a) =>  Arbitrary (Validation err a) where
-  arbitrary =
-    fmap (either failure success) arbitrary
+import Data.Traversable
 
 instance (Arbitrary err, Arbitrary a) =>  Arbitrary (AccValidation err a) where
   arbitrary =
     fmap (either failure success) arbitrary
 
-instance (Pointed m, Arbitrary err, Arbitrary a) =>  Arbitrary (ValidationT m err a) where
+instance (Arbitrary err, Arbitrary a) =>  Arbitrary (Validation err a) where
   arbitrary =
-    fmap (ValidationT . point) arbitrary
+    fmap (either failure success) arbitrary
+
+instance (Applicative m, Arbitrary err, Arbitrary a) =>  Arbitrary (ValidationT m err a) where
+  arbitrary =
+    fmap (ValidationT . pure) arbitrary
 
 main ::
   IO ()
@@ -29,27 +31,37 @@ validationTests =
   [
     testGroup "Validation"
       [
-        testProperty "fold/success/failure for Validation"       prop_fold_success_failure_Validation
-      , testProperty "fold/success/failure for AccValidation"    prop_fold_success_failure_AccValidation
+        testProperty "AccValidation Semigroup associative"      prop_semigroup_associative_AccValidation
+      , testProperty "AccValidation Monoid associative"      prop_monoid_associative_AccValidation
+      , testProperty "AccValidation Monoid right-identity"      prop_monoid_right_identity_AccValidation
+      , testProperty "AccValidation Monoid left-identity"      prop_monoid_left_identity_AccValidation
       ]
   ]
 
-prop_fold_success_failure ::
-  (Validate v, FoldValidate v, Eq (v err a)) =>
-  v err a
+prop_semigroup_associative_AccValidation ::
+  AccValidation [Int] String
+  -> AccValidation [Int] String
+  -> AccValidation [Int] String
   -> Bool
-prop_fold_success_failure v =
-  foldValidate failure success v == v
+prop_semigroup_associative_AccValidation x y z =
+  ((x <> y) <> z) == (x <> (y <> z))
 
-prop_fold_success_failure_Validation ::
-  Validation Int String
+prop_monoid_associative_AccValidation ::
+  AccValidation [Int] String
+  -> AccValidation [Int] String
+  -> AccValidation [Int] String
   -> Bool
-prop_fold_success_failure_Validation =
-  prop_fold_success_failure
+prop_monoid_associative_AccValidation x y z =
+  ((x `mappend` y) `mappend` z) == (x `mappend` (y `mappend` z))
 
-prop_fold_success_failure_AccValidation ::
-  AccValidation Int String
+prop_monoid_right_identity_AccValidation ::
+  AccValidation [Int] String
   -> Bool
-prop_fold_success_failure_AccValidation =
-  prop_fold_success_failure
+prop_monoid_right_identity_AccValidation x =
+  x `mappend` mempty == x
 
+prop_monoid_left_identity_AccValidation ::
+  AccValidation [Int] String
+  -> Bool
+prop_monoid_left_identity_AccValidation x =
+  mempty `mappend` x == x

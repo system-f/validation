@@ -29,13 +29,14 @@ Executable          validation-test
                     -Wall
                     -fhpc
                     -fwarn-tabs
-  
-  Build-Depends:  
-                   base < 5 && >= 3
-                   , semigroups
-                   , pointed
-                   , QuickCheck
-                   , test-framework
-                   , test-framework-quickcheck2
-                   , test-framework-hunit
+                    -fno-warn-orphans
 
+  Build-Depends:
+                   base < 5 && >= 3
+                   , semigroups >= 0.8 && < 0.9
+                   , semigroupoids == 3.0
+                   , bifunctors == 3.0
+                   , QuickCheck >= 2.4.2 && <= 2.5
+                   , test-framework >= 0.5 && <= 0.6
+                   , test-framework-quickcheck2 >= 0.2.10 && <= 0.2.12.2
+                   , test-framework-hunit == 0.2.7
