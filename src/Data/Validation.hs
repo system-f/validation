@@ -252,3 +252,29 @@ class Validate v where
   success ::
     a
     -> v err a
+
+instance Validate AccValidation where
+  failure =
+    AccFailure
+  success =
+    AccSuccess
+
+instance Validate Validation where
+  failure =
+    Failure
+  success =
+    Success
+
+instance Applicative m => Validate (ValidationT m) where
+  failure =
+    ValidationT . pure . failure
+  success =
+    ValidationT . pure . success
+
+{-
+class Validate v => ValidateTraversal v where
+  traverseFailure ::
+    Traversal (v a c) (v b c) a b
+  traverseSuccess ::
+    Traversal (v c a) (v c b) a b
+-}
