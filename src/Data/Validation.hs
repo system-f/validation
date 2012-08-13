@@ -18,6 +18,7 @@ module Data.Validation
 ) -} where
 
 import Control.Applicative
+import Control.Lens.Traversal
 import Data.Foldable
 import Data.Traversable
 import Data.Bifunctor
@@ -271,10 +272,8 @@ instance Applicative m => Validate (ValidationT m) where
   success =
     ValidationT . pure . success
 
-{-
 class Validate v => ValidateTraversal v where
   traverseFailure ::
     Traversal (v a c) (v b c) a b
   traverseSuccess ::
     Traversal (v c a) (v c b) a b
--}
