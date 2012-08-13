@@ -214,7 +214,19 @@ instance Applicative m => Applicative (ValidationT m err) where
   ValidationT f <*> ValidationT a =
     ValidationT (liftA2 (<*>) f a)
 
--- Alt, Alternative, Foldable, Traversable, Bifunctor, Bitraversable
+instance (Functor m, Monad m) => Alt (ValidationT m err) where
+  ValidationT x <!> ValidationT y =
+    ValidationT (x >>= \q -> case q of
+      Failure _ -> y
+      Success a -> return (Success a))
+
+instance (Applicative m, Monad m, Monoid err) => Alternative (ValidationT m err) where
+  ValidationT x <|> ValidationT y =
+    ValidationT (x >>= \q -> case q of
+      Failure _ -> y
+      Success a -> return (Success a))
+  empty =
+    ValidationT (pure (Failure mempty))
 
 instance (Bind m, Monad m) => Bind (ValidationT m err) where
   ValidationT v >>- f =
@@ -233,4 +245,7 @@ instance Monad m => Monad (ValidationT m err) where
 class Validate v where
   failure ::
     err
+    -> v err a
+  success ::
+    a
     -> v err a
