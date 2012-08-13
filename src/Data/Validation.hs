@@ -18,7 +18,6 @@ module Data.Validation
 ) -} where
 
 import Control.Applicative
-import Control.Compose
 import Control.Lens.Traversal
 import Data.Foldable
 import Data.Traversable
@@ -116,7 +115,7 @@ instance Bitraversable AccValidation where
 instance Semigroup e => Semigroup (AccValidation e a) where
   AccFailure e1 <> AccFailure e2 =
     AccFailure (e1 <> e2)
-  AccFailure e1 <> AccSuccess a2  =
+  AccFailure _ <> AccSuccess a2  =
     AccSuccess a2
   AccSuccess a1  <> AccFailure _ =
     AccSuccess a1
