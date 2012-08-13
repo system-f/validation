@@ -340,20 +340,16 @@ instance ValidateTraversal AccValidation where
     AccFailure <$> f e
   traverseFailure _ (AccSuccess a) =
     pure (AccSuccess a)
-  traverseSuccess _ (AccFailure e) =
-    pure (AccFailure e)
-  traverseSuccess f (AccSuccess a) =
-    AccSuccess <$> f a
+  traverseSuccess =
+    traverse
 
 instance ValidateTraversal Validation where
   traverseFailure f (Failure e) =
     Failure <$> f e
   traverseFailure _ (Success a) =
     pure (Success a)
-  traverseSuccess _ (Failure e) =
-    pure (Failure e)
-  traverseSuccess f (Success a) =
-    Success <$> f a
+  traverseSuccess =
+    traverse
 
 instance Traversable g => ValidateTraversal (ValidationT g) where
   traverseFailure f (ValidationT x) =
