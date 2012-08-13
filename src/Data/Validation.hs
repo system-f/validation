@@ -26,7 +26,6 @@ import Data.Bitraversable
 import Data.Functor.Bind
 import Data.Functor.Alt
 import Data.Semigroup
-import Data.Maybe
 import Data.Typeable
 import Data.Data
 
@@ -241,6 +240,10 @@ instance Monad m => Monad (ValidationT m err) where
     ValidationT (v >>= \w -> case w of
                                Failure e -> return (Failure e)
                                Success a -> runValidationT (f a))
+
+instance Functor m => Bifunctor (ValidationT m) where
+  bimap f g (ValidationT x) =
+    ValidationT (fmap (bimap f g) x)
 
 class Validate v where
   failure ::
