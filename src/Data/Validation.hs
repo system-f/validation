@@ -18,7 +18,9 @@ module Data.Validation
 ) -} where
 
 import Control.Applicative
+import Control.Compose
 import Control.Lens.Traversal
+import Control.Monad.Trans.Class
 import Data.Foldable
 import Data.Traversable
 import Data.Bifunctor
@@ -112,6 +114,28 @@ instance Bitraversable AccValidation where
   bitraverse f _ (AccFailure e) =
     AccFailure <$> f e
 
+instance Semigroup e => Semigroup (AccValidation e a) where
+  AccFailure e1 <> AccFailure e2 =
+    AccFailure (e1 <> e2)
+  AccFailure e1 <> AccSuccess a2  =
+    AccSuccess a2
+  AccSuccess a1  <> AccFailure _ =
+    AccSuccess a1
+  AccSuccess a1 <> AccSuccess _ =
+    AccSuccess a1
+
+instance Monoid e => Monoid (AccValidation e a) where
+  AccFailure e1 `mappend` AccFailure e2 =
+    AccFailure (e1 `mappend` e2)
+  AccFailure _ `mappend` AccSuccess a2  =
+    AccSuccess a2
+  AccSuccess a1  `mappend` AccFailure _ =
+    AccSuccess a1
+  AccSuccess a1 `mappend` AccSuccess _ =
+    AccSuccess a1
+  mempty =
+    AccFailure mempty
+
 -- | A value of the type @err@ or @a@ and isomorphic to @Data.Either@.
 data Validation err a =
   Failure err
@@ -194,6 +218,28 @@ instance Monad (Validation err) where
   (>>=) =
     (>>-)
 
+instance Semigroup (Validation e a) where
+  Failure _ <> Failure e2 =
+    Failure e2
+  Failure _ <> Success a2  =
+    Success a2
+  Success a1 <> Failure _ =
+    Success a1
+  Success a1 <> Success _ =
+    Success a1
+
+instance Monoid e => Monoid (Validation e a) where
+  Failure _ `mappend` Failure e2 =
+    Failure e2
+  Failure _ `mappend` Success a2 =
+    Success a2
+  Success a1  `mappend` Failure _ =
+    Success a1
+  Success a1 `mappend` Success _ =
+    Success a1
+  mempty =
+    Failure mempty
+
 -- | The transformer version of @Validation@.
 data ValidationT m err a =
   ValidationT {
@@ -241,6 +287,20 @@ instance Monad m => Monad (ValidationT m err) where
     ValidationT (v >>= \w -> case w of
                                Failure e -> return (Failure e)
                                Success a -> runValidationT (f a))
+
+instance (Bind m, Monad m) => Semigroup (ValidationT m e a) where
+  ValidationT x <> ValidationT y =
+    ValidationT (x >>- \w -> case w of
+                               Success a1 -> return (Success a1)
+                               Failure e1 -> y >>- \v -> return $ case v of
+                                                                    Success _ -> Failure e1
+                                                                    Failure e2 -> Failure e2)
+
+instance (Bind m, Monad m, Monoid e) => Monoid (ValidationT m e a) where
+  mappend =
+    (<>)
+  mempty =
+    ValidationT . return . Failure $ mempty
 
 instance Functor m => Bifunctor (ValidationT m) where
   bimap f g (ValidationT x) =
