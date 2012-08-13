@@ -304,12 +304,15 @@ instance Functor m => Bifunctor (ValidationT m) where
   bimap f g (ValidationT x) =
     ValidationT (fmap (bimap f g) x)
 
+-- | Construction for validation values.
 class Validate v where
-  failure ::
-    err
-    -> v err a
+  -- | Construct a success validation value.
   success ::
     a
+    -> v err a
+  -- | Construct a failure validation value.
+  failure ::
+    err
     -> v err a
 
 instance Validate AccValidation where
@@ -330,9 +333,12 @@ instance Applicative m => Validate (ValidationT m) where
   success =
     ValidationT . pure . success
 
+-- | Traverse the failure and success values of a validation.
 class ValidateTraversal v where
+  -- | Traverse the failure.
   traverseFailure ::
     Traversal (v a c) (v b c) a b
+  -- | Traverse the success.
   traverseSuccess ::
     Traversal (v c a) (v c b) a b
 
