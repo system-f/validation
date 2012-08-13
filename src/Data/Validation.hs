@@ -2,20 +2,13 @@
 
 -- | Data types similar to @Data.Either@ that are explicit about failure and success.
 module Data.Validation
-{-
 (
   AccValidation
 , Validation
 , ValidationT(..)
 , Validate(..)
-, FoldValidate(..)
-, fromFailure
-, fromSuccess
-, getFailure
-, getSuccess
-, getFailureOr
-, getSuccessOr
-) -} where
+, ValidateTraversal(..)
+) where
 
 import Control.Applicative
 import Control.Lens.Traversal
