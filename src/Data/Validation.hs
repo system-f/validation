@@ -20,7 +20,6 @@ module Data.Validation
 import Control.Applicative
 import Control.Compose
 import Control.Lens.Traversal
-import Control.Monad.Trans.Class
 import Data.Foldable
 import Data.Traversable
 import Data.Bifunctor
