@@ -1,6 +1,6 @@
 :set -i../src -isrc
-:m + Test.QuickCheck
 :l Main
+:m + Test.QuickCheck Data.Validation
 :set prompt "test>> "
 :set -Wall
 

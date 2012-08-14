@@ -7,11 +7,9 @@ module Data.Validation
 , Validation
 , ValidationT(..)
 , Validate(..)
-, ValidateTraversal(..)
 ) where
 
 import Control.Applicative
-import Control.Lens.Traversal
 import Data.Foldable
 import Data.Traversable
 import Data.Bifunctor
@@ -22,6 +20,7 @@ import Data.Functor.Alt
 import Data.Semigroup
 import Data.Typeable
 import Data.Data
+import Prelude hiding (foldr)
 
 -- | A value of the type @err@ or @a@, however, the @Applicative@ instance
 -- accumulates values. This is witnessed by the @Semigroup@ context on the instance.
@@ -209,28 +208,6 @@ instance Monad (Validation err) where
   (>>=) =
     (>>-)
 
-instance Semigroup (Validation e a) where
-  Failure _ <> Failure e2 =
-    Failure e2
-  Failure _ <> Success a2  =
-    Success a2
-  Success a1 <> Failure _ =
-    Success a1
-  Success a1 <> Success _ =
-    Success a1
-
-instance Monoid e => Monoid (Validation e a) where
-  Failure _ `mappend` Failure e2 =
-    Failure e2
-  Failure _ `mappend` Success a2 =
-    Success a2
-  Success a1  `mappend` Failure _ =
-    Success a1
-  Success a1 `mappend` Success _ =
-    Success a1
-  mempty =
-    Failure mempty
-
 -- | The transformer version of @Validation@.
 data ValidationT m err a =
   ValidationT {
@@ -265,9 +242,29 @@ instance (Applicative m, Monad m, Monoid err) => Alternative (ValidationT m err)
   empty =
     ValidationT (pure (Failure mempty))
 
-instance (Bind m, Monad m) => Bind (ValidationT m err) where
+instance Foldable m => Foldable (ValidationT m err) where
+  foldr f z (ValidationT x) =
+    foldr (flip (foldr f)) z x
+
+instance Traversable m => Traversable (ValidationT m err) where
+  traverse f (ValidationT x) =
+      ValidationT <$> traverse (traverse f) x
+
+instance Functor m => Bifunctor (ValidationT m) where
+  bimap f g (ValidationT x) =
+    ValidationT (fmap (bimap f g) x)
+
+instance Foldable m => Bifoldable (ValidationT m) where
+  bifoldr f g z (ValidationT x) =
+    foldr (flip (bifoldr f g)) z x
+
+instance Traversable m => Bitraversable (ValidationT m) where
+  bitraverse f g (ValidationT x) =
+    ValidationT <$> traverse (bitraverse f g) x
+
+instance (Apply m, Monad m) => Bind (ValidationT m err) where
   ValidationT v >>- f =
-    ValidationT (v >>- \w -> case w of
+    ValidationT (v >>= \w -> case w of
                                Failure e -> return (Failure e)
                                Success a -> runValidationT (f a))
 
@@ -278,24 +275,6 @@ instance Monad m => Monad (ValidationT m err) where
     ValidationT (v >>= \w -> case w of
                                Failure e -> return (Failure e)
                                Success a -> runValidationT (f a))
-
-instance (Bind m, Monad m) => Semigroup (ValidationT m e a) where
-  ValidationT x <> ValidationT y =
-    ValidationT (x >>- \w -> case w of
-                               Success a1 -> return (Success a1)
-                               Failure e1 -> y >>- \v -> return $ case v of
-                                                                    Success _ -> Failure e1
-                                                                    Failure e2 -> Failure e2)
-
-instance (Bind m, Monad m, Monoid e) => Monoid (ValidationT m e a) where
-  mappend =
-    (<>)
-  mempty =
-    ValidationT . return . Failure $ mempty
-
-instance Functor m => Bifunctor (ValidationT m) where
-  bimap f g (ValidationT x) =
-    ValidationT (fmap (bimap f g) x)
 
 -- | Construction for validation values.
 class Validate v where
@@ -325,34 +304,3 @@ instance Applicative m => Validate (ValidationT m) where
     ValidationT . pure . failure
   success =
     ValidationT . pure . success
-
--- | Traverse the failure and success values of a validation.
-class ValidateTraversal v where
-  -- | Traverse the failure.
-  traverseFailure ::
-    Traversal (v a c) (v b c) a b
-  -- | Traverse the success.
-  traverseSuccess ::
-    Traversal (v c a) (v c b) a b
-
-instance ValidateTraversal AccValidation where
-  traverseFailure f (AccFailure e) =
-    AccFailure <$> f e
-  traverseFailure _ (AccSuccess a) =
-    pure (AccSuccess a)
-  traverseSuccess =
-    traverse
-
-instance ValidateTraversal Validation where
-  traverseFailure f (Failure e) =
-    Failure <$> f e
-  traverseFailure _ (Success a) =
-    pure (Success a)
-  traverseSuccess =
-    traverse
-
-instance Traversable g => ValidateTraversal (ValidationT g) where
-  traverseFailure f (ValidationT x) =
-    ValidationT <$> traverse (traverseFailure f) x
-  traverseSuccess f (ValidationT x) =
-    ValidationT <$> traverse (traverseSuccess f) x
