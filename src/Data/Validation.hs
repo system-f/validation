@@ -1,38 +1,71 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | Data types similar to @Data.Either@ that are explicit about failure and success.
 module Data.Validation
 (
+  -- * Data types
   AccValidation
 , Validation
 , ValidationT(..)
+  -- * Prisms
 , Validate(..)
+  -- * Isomorphisms
+, isoAccValidationEither
+, isoValidationEither
+, isoAccValidationValidation
 ) where
 
-import Control.Applicative
-import Data.Foldable
-import Data.Traversable
-import Data.Bifunctor
-import Data.Bifoldable
-import Data.Bitraversable
-import Data.Functor.Bind
-import Data.Functor.Alt
-import Data.Semigroup
-import Data.Typeable
-import Data.Data
-import Prelude hiding (foldr)
+import Control.Applicative(Applicative(..), Alternative(..), liftA2, (<$>))
+import Control.Lens.Prism(Prism, prism)
+import Control.Lens.Iso(Swapped(..), Iso', iso)
+import Control.Lens.Review((#))
+import Control.Monad(Monad(..))
+import Data.Bifoldable(Bifoldable(..))
+import Data.Bifunctor(Bifunctor(..))
+import Data.Bitraversable(Bitraversable(..))
+import Data.Data(Data)
+import Data.Either(Either(..))
+import Data.Eq(Eq)
+import Data.Foldable(Foldable(..))
+import Data.Function((.), flip)
+import Data.Functor(Functor(..))
+import Data.Functor.Alt(Alt(..))
+import Data.Functor.Apply(Apply(..))
+import Data.Functor.Bind(Bind(..), liftF2)
+import Data.Monoid(Monoid(..))
+import Data.Ord(Ord)
+import Data.Semigroup(Semigroup(..))
+import Data.Traversable(Traversable(..))
+import Data.Typeable(Typeable)
+import Prelude(Show)
+
+-- $setup
+-- >>> import Prelude(Num(..))
+-- >>> import Data.Eq(Eq(..))
+-- >>> import Data.String(String)
+-- >>> import Data.Int(Int)
+-- >>> import Test.QuickCheck
+-- >>> import Data.Either(either)
+-- >>> instance (Arbitrary err, Arbitrary a) => Arbitrary (AccValidation err a) where arbitrary = fmap (either (_Failure #) (_Success #)) arbitrary
+-- >>> instance (Arbitrary err, Arbitrary a) => Arbitrary (Validation err a) where arbitrary = fmap (either (_Failure #) (_Success #)) arbitrary
+-- >>> instance (Applicative m, Arbitrary err, Arbitrary a) => Arbitrary (ValidationT m err a) where arbitrary = fmap (ValidationT . pure) arbitrary
 
 -- | A value of the type @err@ or @a@, however, the @Applicative@ instance
 -- accumulates values. This is witnessed by the @Semigroup@ context on the instance.
 -- /Note that there is no @Monad@ such that @ap = (<*>)./
 --
--- * @success (+1) <*> success 7 == AccSuccess 8@
+-- >>> _Success # (+1) <*> _Success # 7 :: AccValidation String Int
+-- AccSuccess 8
 --
--- * @failure ["f1"] <*> success 7 == AccFailure ["f1"]@
+-- >>> _Failure # ["f1"] <*> _Success # 7 :: AccValidation [String] Int
+-- AccFailure ["f1"]
 --
--- * @success (+1) <*> failure ["f2"] == AccFailure ["f2"]@
+-- >>> _Success # (+1) <*> _Failure # ["f2"] :: AccValidation [String] Int
+-- AccFailure ["f2"]
 --
--- * @failure ["f1"] <*> failure ["f2"] == AccFailure ["f1","f2"]@
+-- >>> _Failure # ["f1"] <*> _Failure # ["f2"] :: AccValidation [String] Int
+-- AccFailure ["f1","f2"]
 data AccValidation err a =
   AccFailure err
   | AccSuccess a
@@ -104,6 +137,9 @@ instance Bitraversable AccValidation where
   bitraverse f _ (AccFailure e) =
     AccFailure <$> f e
 
+-- |
+--
+-- prop> ((x <> y) <> z) == (x <> (y <> z :: AccValidation [String] Int))
 instance Semigroup e => Semigroup (AccValidation e a) where
   AccFailure e1 <> AccFailure e2 =
     AccFailure (e1 <> e2)
@@ -114,6 +150,13 @@ instance Semigroup e => Semigroup (AccValidation e a) where
   AccSuccess a1 <> AccSuccess _ =
     AccSuccess a1
 
+-- |
+--
+-- prop> ((x `mappend` y) `mappend` z) == (x `mappend` (y `mappend` z :: AccValidation [String] Int))
+--
+-- prop> mempty `mappend` x == (x :: AccValidation [String] Int)
+--
+-- prop> x `mappend` mempty == (x :: AccValidation [String] Int)
 instance Monoid e => Monoid (AccValidation e a) where
   AccFailure e1 `mappend` AccFailure e2 =
     AccFailure (e1 `mappend` e2)
@@ -127,6 +170,18 @@ instance Monoid e => Monoid (AccValidation e a) where
     AccFailure mempty
 
 -- | A value of the type @err@ or @a@ and isomorphic to @Data.Either@.
+--
+-- >>> _Success # (+1) <*> _Success # 7 :: Validation String Int
+-- Success 8
+--
+-- >>> _Failure # ["f1"] <*> _Success # 7 :: Validation [String] Int
+-- Failure ["f1"]
+--
+-- >>> _Success # (+1) <*> _Failure # ["f2"] :: Validation [String] Int
+-- Failure ["f2"]
+--
+-- >>> _Failure # ["f1"] <*> _Failure # ["f2"] :: Validation [String] Int
+-- Failure ["f1"]
 data Validation err a =
   Failure err
   | Success a
@@ -276,31 +331,87 @@ instance Monad m => Monad (ValidationT m err) where
                                Failure e -> return (Failure e)
                                Success a -> runValidationT (f a))
 
--- | Construction for validation values.
-class Validate v where
-  -- | Construct a success validation value.
-  success ::
-    a
-    -> v err a
-  -- | Construct a failure validation value.
-  failure ::
-    err
-    -> v err a
+class Validate f where
+  _Failure ::
+    Prism (f e1 a) (f e2 a) e1 e2
+  _Success ::
+    Prism (f e a) (f e b) a b
 
 instance Validate AccValidation where
-  failure =
-    AccFailure
-  success =
-    AccSuccess
+  _Success =
+    prism AccSuccess (\v -> case v of
+                              AccFailure e -> Left (AccFailure e)
+                              AccSuccess a -> Right a)
+  _Failure =
+    prism AccFailure (\v -> case v of
+                              AccFailure e -> Right e
+                              AccSuccess a -> Left (AccSuccess a))
 
 instance Validate Validation where
-  failure =
-    Failure
-  success =
-    Success
+  _Success =
+    prism Success (\v -> case v of
+                              Failure e -> Left (Failure e)
+                              Success a -> Right a)
+  _Failure =
+    prism Failure (\v -> case v of
+                              Failure e -> Right e
+                              Success a -> Left (Success a))
 
-instance Applicative m => Validate (ValidationT m) where
-  failure =
-    ValidationT . pure . failure
-  success =
-    ValidationT . pure . success
+instance Swapped AccValidation where
+  swapped =
+    iso
+      (\v -> case v of
+               AccFailure e -> AccSuccess e
+               AccSuccess a -> AccFailure a)
+      (\v -> case v of
+               AccFailure a -> AccSuccess a
+               AccSuccess e -> AccFailure e)
+
+instance Swapped Validation where
+  swapped =
+    iso
+      (\v -> case v of
+               Failure e -> Success e
+               Success a -> Failure a)
+      (\v -> case v of
+               Failure a -> Success a
+               Success e -> Failure e)
+
+instance Functor f => Swapped (ValidationT f) where
+  swapped =
+    iso
+      (\(ValidationT x) -> ValidationT (fmap (swapped #) x))
+      (\(ValidationT x) -> ValidationT (fmap (swapped #) x))
+
+isoAccValidationEither ::
+  Iso' (AccValidation e a) (Either e a)
+isoAccValidationEither =
+  iso
+    (\v -> case v of
+             AccFailure e -> Left e
+             AccSuccess a -> Right a)
+    (\v -> case v of
+             Left e -> AccFailure e
+             Right a -> AccSuccess a)
+
+isoValidationEither ::
+  Iso' (Validation e a) (Either e a)
+isoValidationEither =
+  iso
+    (\v -> case v of
+             Failure e -> Left e
+             Success a -> Right a)
+    (\v -> case v of
+             Left e -> Failure e
+             Right a -> Success a)
+
+isoAccValidationValidation ::
+  Iso' (AccValidation e a) (Validation e a)
+isoAccValidationValidation =
+  iso
+    (\v -> case v of
+             AccFailure e -> Failure e
+             AccSuccess a -> Success a)
+    (\v -> case v of
+             Failure e -> AccFailure e
+             Success a -> AccSuccess a)

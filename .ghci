@@ -1,5 +1,5 @@
-:set -isrc
-:l Data.Validation
-:m + Test.QuickCheck
+:set -isrc -idist/build/autogen
+:set -optP-include -optPdist/build/autogen/cabal_macros.h
 :set prompt ">> "
 :set -Wall
+
