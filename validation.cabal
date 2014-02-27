@@ -12,6 +12,7 @@ homepage:           https://github.com/tonymorris/validation
 bug-reports:        https://github.com/tonymorris/validation/issues
 cabal-version:      >= 1.10
 build-type:         Custom
+extra-source-files: changelog
 
 source-repository   head
   type:             git
