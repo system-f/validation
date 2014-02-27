@@ -53,7 +53,7 @@ import Prelude(Show)
 
 -- | A value of the type @err@ or @a@, however, the @Applicative@ instance
 -- accumulates values. This is witnessed by the @Semigroup@ context on the instance.
--- /Note that there is no @Monad@ such that @ap = (<*>)./
+-- /Note that there is no Monad such that ap = (<*>)./
 --
 -- >>> _Success # (+1) <*> _Success # 7 :: AccValidation String Int
 -- AccSuccess 8
