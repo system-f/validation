@@ -10,3 +10,6 @@ A restructuring of 0.2.x where:
 
 Use Safe Haskell pragma
 
+0.3.2
+
+Implement Validate on Either

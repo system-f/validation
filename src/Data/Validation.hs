@@ -358,6 +358,16 @@ instance Validate Validation where
                               Failure e -> Right e
                               Success a -> Left (Success a))
 
+instance Validate Either where
+  _Success =
+    prism Right (\v -> case v of
+                              Left e -> Left (Left e)
+                              Right a -> Right a)
+  _Failure =
+    prism Left (\v -> case v of
+                              Left e -> Right e
+                              Right a -> Left (Right a))
+
 instance Swapped AccValidation where
   swapped =
     iso
