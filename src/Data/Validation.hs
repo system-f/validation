@@ -24,7 +24,7 @@ module Data.Validation
 import Control.Applicative(Applicative(..), Alternative(..), liftA2, (<$>))
 import Control.Lens.Prism(Prism, prism)
 import Control.Lens.Iso(Swapped(..), Iso', iso, from)
-import Control.Lens.Review((#))
+import Control.Lens.Review(( # ))
 import Control.Monad(Monad(..))
 import Data.Bifoldable(Bifoldable(..))
 import Data.Bifunctor(Bifunctor(..))
@@ -399,8 +399,8 @@ instance Swapped Validation where
 instance Functor f => Swapped (ValidationT f) where
   swapped =
     iso
-      (\(ValidationT x) -> ValidationT (fmap (swapped #) x))
-      (\(ValidationT x) -> ValidationT (fmap (swapped #) x))
+      (\(ValidationT x) -> ValidationT (fmap (swapped # ) x))
+      (\(ValidationT x) -> ValidationT (fmap (swapped # ) x))
 
 isoAccValidationEither ::
   Iso' (AccValidation e a) (Either e a)
