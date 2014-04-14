@@ -13,3 +13,7 @@ Use Safe Haskell pragma
 0.3.2
 
 Implement Validate on Either
+
+0.3.3
+
+Provide Isos between (ValidationT Identity) and other data types.

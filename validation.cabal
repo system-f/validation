@@ -1,5 +1,5 @@
 name:               validation
-version:            0.3.2
+version:            0.3.3
 license:            BSD3
 license-file:       LICENSE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ>, Nick Partridge
@@ -31,6 +31,7 @@ library
                     , semigroupoids >= 4.0
                     , bifunctors >= 3.0
                     , lens >= 4.0
+                    , transformers >= 0.3.0.0
 
   ghc-options:
                     -Wall

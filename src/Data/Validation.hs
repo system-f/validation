@@ -9,17 +9,21 @@ module Data.Validation
   AccValidation
 , Validation
 , ValidationT(..)
+, Validation'
   -- * Prisms
 , Validate(..)
   -- * Isomorphisms
 , isoAccValidationEither
 , isoValidationEither
 , isoAccValidationValidation
+, isoValidationTEither
+, isoAccValidationValidationT
+, isoValidationValidationT
 ) where
 
 import Control.Applicative(Applicative(..), Alternative(..), liftA2, (<$>))
 import Control.Lens.Prism(Prism, prism)
-import Control.Lens.Iso(Swapped(..), Iso', iso)
+import Control.Lens.Iso(Swapped(..), Iso', iso, from)
 import Control.Lens.Review((#))
 import Control.Monad(Monad(..))
 import Data.Bifoldable(Bifoldable(..))
@@ -34,6 +38,7 @@ import Data.Functor(Functor(..))
 import Data.Functor.Alt(Alt(..))
 import Data.Functor.Apply(Apply(..))
 import Data.Functor.Bind(Bind(..), liftF2)
+import Data.Functor.Identity(Identity(..))
 import Data.Monoid(Monoid(..))
 import Data.Ord(Ord)
 import Data.Semigroup(Semigroup(..))
@@ -270,6 +275,9 @@ data ValidationT m err a =
     runValidationT :: m (Validation err a)
   }
 
+type Validation' err a =
+  ValidationT Identity err a
+
 instance Functor m => Functor (ValidationT m err) where
   fmap f (ValidationT k) =
     ValidationT (fmap (fmap f) k)
@@ -426,3 +434,24 @@ isoAccValidationValidation =
     (\v -> case v of
              Failure e -> AccFailure e
              Success a -> AccSuccess a)
+
+isoValidationTEither ::
+  Iso' (Validation' e a) (Either e a)
+isoValidationTEither =
+  iso
+    (\(ValidationT v) -> case runIdentity v of
+                           Failure e -> Left e
+                           Success a -> Right a)
+    (\v -> ValidationT (Identity (case v of 
+              Left e -> Failure e
+              Right a -> Success a)))
+
+isoAccValidationValidationT ::
+  Iso' (AccValidation e a) (Validation' e a)
+isoAccValidationValidationT =
+  isoAccValidationEither . from isoValidationTEither
+
+isoValidationValidationT ::
+  Iso' (Validation e a) (Validation' e a)
+isoValidationValidationT =
+  isoValidationEither . from isoValidationTEither
