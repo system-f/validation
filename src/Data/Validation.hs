@@ -23,7 +23,7 @@ module Data.Validation
 
 import Control.Applicative(Applicative(..), Alternative(..), liftA2, (<$>))
 import Control.Lens.Prism(Prism, prism)
-import Control.Lens.Iso(Swapped(..), Iso', iso, from)
+import Control.Lens.Iso(Swapped(..), Iso, iso, from)
 import Control.Lens.Review(( # ))
 import Control.Monad(Monad(..))
 import Data.Bifoldable(Bifoldable(..))
@@ -403,7 +403,7 @@ instance Functor f => Swapped (ValidationT f) where
       (\(ValidationT x) -> ValidationT (fmap (swapped # ) x))
 
 isoAccValidationEither ::
-  Iso' (AccValidation e a) (Either e a)
+  Iso (AccValidation e a) (AccValidation f b) (Either e a) (Either f b)
 isoAccValidationEither =
   iso
     (\v -> case v of
@@ -414,7 +414,7 @@ isoAccValidationEither =
              Right a -> AccSuccess a)
 
 isoValidationEither ::
-  Iso' (Validation e a) (Either e a)
+  Iso (Validation e a) (Validation f b) (Either e a) (Either f b)
 isoValidationEither =
   iso
     (\v -> case v of
@@ -425,7 +425,7 @@ isoValidationEither =
              Right a -> Success a)
 
 isoAccValidationValidation ::
-  Iso' (AccValidation e a) (Validation e a)
+  Iso (AccValidation e a) (AccValidation f b) (Validation e a) (Validation f b)
 isoAccValidationValidation =
   iso
     (\v -> case v of
@@ -436,7 +436,7 @@ isoAccValidationValidation =
              Success a -> AccSuccess a)
 
 isoValidationTEither ::
-  Iso' (Validation' e a) (Either e a)
+  Iso (Validation' e a) (Validation' f b) (Either e a) (Either f b)
 isoValidationTEither =
   iso
     (\(ValidationT v) -> case runIdentity v of
@@ -447,11 +447,11 @@ isoValidationTEither =
               Right a -> Success a)))
 
 isoAccValidationValidationT ::
-  Iso' (AccValidation e a) (Validation' e a)
+  Iso (AccValidation e a) (AccValidation f b) (Validation' e a) (Validation' f b)
 isoAccValidationValidationT =
   isoAccValidationEither . from isoValidationTEither
 
 isoValidationValidationT ::
-  Iso' (Validation e a) (Validation' e a)
+  Iso (Validation e a) (Validation f b) (Validation' e a) (Validation' f b)
 isoValidationValidationT =
   isoValidationEither . from isoValidationTEither
