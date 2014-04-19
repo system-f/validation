@@ -17,3 +17,8 @@ Implement Validate on Either
 0.3.3
 
 Provide Isos between (ValidationT Identity) and other data types.
+
+0.3.4
+
+Loosen the type of the Isos for polymorphic update.
+
