@@ -11,19 +11,16 @@ module Data.Validation
 , ValidationT(..)
 , Validation'
   -- * Prisms
-, Validate(..)
+, _Failure
+, _Success
   -- * Isomorphisms
-, isoAccValidationEither
-, isoValidationEither
-, isoAccValidationValidation
-, isoValidationTEither
-, isoAccValidationValidationT
-, isoValidationValidationT
+, Validate(..)
 ) where
 
 import Control.Applicative(Applicative(..), Alternative(..), liftA2, (<$>))
+import Control.Lens((^.))
 import Control.Lens.Prism(Prism, prism)
-import Control.Lens.Iso(Swapped(..), Iso, iso, from)
+import Control.Lens.Iso(Swapped(..), Iso, iso)
 import Control.Lens.Review(( # ))
 import Control.Monad(Monad(..))
 import Data.Bifoldable(Bifoldable(..))
@@ -33,7 +30,7 @@ import Data.Data(Data)
 import Data.Either(Either(..))
 import Data.Eq(Eq)
 import Data.Foldable(Foldable(..))
-import Data.Function((.), flip)
+import Data.Function((.), id, flip)
 import Data.Functor(Functor(..))
 import Data.Functor.Alt(Alt(..))
 import Data.Functor.Apply(Apply(..))
@@ -341,40 +338,87 @@ instance Monad m => Monad (ValidationT m err) where
                                Success a -> runValidationT (f a))
 
 class Validate f where
-  _Failure ::
-    Prism (f e1 a) (f e2 a) e1 e2
-  _Success ::
-    Prism (f e a) (f e b) a b
-
-instance Validate AccValidation where
-  _Success =
-    prism AccSuccess (\v -> case v of
-                              AccFailure e -> Left (AccFailure e)
-                              AccSuccess a -> Right a)
-  _Failure =
-    prism AccFailure (\v -> case v of
-                              AccFailure e -> Right e
-                              AccSuccess a -> Left (AccSuccess a))
+  _Validation ::
+    Iso (f e a) (f g b) (Validation e a) (Validation g b)
+  _Validation' ::
+    Iso (f e a) (f g b) (Validation' e a) (Validation' g b)
+  _Validation' =
+    iso
+      (\x -> ValidationT (Identity (x ^. _Validation)))
+      (\(ValidationT (Identity x)) -> _Validation # x)
+  _AccValidation ::
+    Iso (f e a) (f g b) (AccValidation e a) (AccValidation g b)
+  _AccValidation =
+    iso
+      (\x -> case x ^. _Validation of
+               Failure e -> AccFailure e
+               Success a -> AccSuccess a)
+      (\x -> _Validation # case x of
+                             AccFailure e -> Failure e
+                             AccSuccess a -> Success a)
+  _Either ::
+    Iso (f e a) (f g b) (Either e a) (Either g b)
+  _Either =
+    iso
+      (\x -> case x ^. _Validation of
+               Failure e -> Left e
+               Success a -> Right a)
+      (\x -> _Validation # case x of
+                             Left e -> Failure e
+                             Right a -> Success a)
 
 instance Validate Validation where
-  _Success =
-    prism Success (\v -> case v of
-                              Failure e -> Left (Failure e)
-                              Success a -> Right a)
-  _Failure =
-    prism Failure (\v -> case v of
-                              Failure e -> Right e
-                              Success a -> Left (Success a))
+  _Validation =
+    iso
+      id
+      id
+instance Validate AccValidation where
+  _Validation =
+    iso
+      (\x -> case x of
+               AccFailure e -> Failure e
+               AccSuccess a -> Success a)
+      (\x -> case x of
+               Failure e -> AccFailure e
+               Success a -> AccSuccess a)
+  _AccValidation =
+    iso 
+      id
+      id
 
 instance Validate Either where
-  _Success =
-    prism Right (\v -> case v of
-                              Left e -> Left (Left e)
-                              Right a -> Right a)
-  _Failure =
-    prism Left (\v -> case v of
-                              Left e -> Right e
-                              Right a -> Left (Right a))
+  _Validation =
+    iso
+      (\x -> case x of
+               Left e -> Failure e
+               Right a -> Success a)
+      (\x -> case x of
+               Failure e -> Left e
+               Success a -> Right a)
+  _Either =
+    iso 
+      id
+      id
+
+_Failure ::
+  Validate f =>
+  Prism (f e1 a) (f e2 a) e1 e2
+_Failure =
+  prism
+    (\x -> _Either # Left x)
+    (\x -> case x ^. _Either of
+             Left e -> Right e
+             Right a -> Left (_Either # Right a))
+
+_Success ::
+  Validate f =>
+  Prism (f e a) (f e b) a b
+_Success =
+  prism
+    (\x -> _Either # Right x)
+    (\x -> case x ^. _Either of
+             Left e -> Left (_Either # Left e)
+             Right a -> Right a)
 
 instance Swapped AccValidation where
   swapped =
@@ -401,57 +445,3 @@ instance Functor f => Swapped (ValidationT f) where
     iso
       (\(ValidationT x) -> ValidationT (fmap (swapped # ) x))
       (\(ValidationT x) -> ValidationT (fmap (swapped # ) x))
-
-isoAccValidationEither ::
-  Iso (AccValidation e a) (AccValidation f b) (Either e a) (Either f b)
-isoAccValidationEither =
-  iso
-    (\v -> case v of
-             AccFailure e -> Left e
-             AccSuccess a -> Right a)
-    (\v -> case v of
-             Left e -> AccFailure e
-             Right a -> AccSuccess a)
-
-isoValidationEither ::
-  Iso (Validation e a) (Validation f b) (Either e a) (Either f b)
-isoValidationEither =
-  iso
-    (\v -> case v of
-             Failure e -> Left e
-             Success a -> Right a)
-    (\v -> case v of
-             Left e -> Failure e
-             Right a -> Success a)
-
-isoAccValidationValidation ::
-  Iso (AccValidation e a) (AccValidation f b) (Validation e a) (Validation f b)
-isoAccValidationValidation =
-  iso
-    (\v -> case v of
-             AccFailure e -> Failure e
-             AccSuccess a -> Success a)
-    (\v -> case v of
-             Failure e -> AccFailure e
-             Success a -> AccSuccess a)
-
-isoValidationTEither ::
-  Iso (Validation' e a) (Validation' f b) (Either e a) (Either f b)
-isoValidationTEither =
-  iso
-    (\(ValidationT v) -> case runIdentity v of
-                           Failure e -> Left e
-                           Success a -> Right a)
-    (\v -> ValidationT (Identity (case v of 
-              Left e -> Failure e
-              Right a -> Success a)))
-
-isoAccValidationValidationT ::
-  Iso (AccValidation e a) (AccValidation f b) (Validation' e a) (Validation' f b)
-isoAccValidationValidationT =
-  isoAccValidationEither . from isoValidationTEither
-
-isoValidationValidationT ::
-  Iso (Validation e a) (Validation f b) (Validation' e a) (Validation' f b)
-isoValidationValidationT =
-  isoValidationEither . from isoValidationTEither

@@ -56,6 +56,6 @@ exFolding = do
 
 exConvert :: IO ()
 exConvert = do
-  print (successAcc ^. isoAccValidationEither :: Either Int String)
-  print (successVal ^. isoValidationEither :: Either Int String)
-  print (Left 3 ^. from isoValidationEither :: Validation Int String)
+  print (successAcc ^. from _AccValidation :: Either Int String)
+  print (successVal ^. from _Validation :: Either Int String)
+  print (Left 3 ^. _Validation :: Validation Int String)
