@@ -1,3 +1,14 @@
+0.4.1
+
+* Remove `Alternative` instances. They are obscene.
+* INLINE pragmas
+
+0.4.0
+
+* Change the premise of the `Validate` type-class to more strongly reflect the isomorphism to Either.
+* The `_Failure` and `_Success` prisms are now derived.
+* Lots more examples
+
 0.3.0
 
 A restructuring of 0.2.x where:
