@@ -599,14 +599,14 @@ instance Monad m => Monad (ValidationT m err) where
   (>>=) =
     bindValidationT
 
-_Validation'V ::
+_ValidationV' ::
   Validate f =>
   Iso (f e a) (f g b) (Validation' e a) (Validation' g b)
-_Validation'V =
+_ValidationV' =
   iso
     (\x -> ValidationT (Identity (x ^. _Validation)))
     (\(ValidationT (Identity x)) -> _Validation # x)
-{-# INLINE _Validation'V #-}
+{-# INLINE _ValidationV' #-}
 
 _AccValidationV ::
   Validate f =>
@@ -641,7 +641,7 @@ class Validate f where
   _Validation' ::
     Iso (f e a) (f g b) (Validation' e a) (Validation' g b)
   _Validation' =
-    _Validation'V
+    _ValidationV'
 
   _AccValidation ::
     Iso (f e a) (f g b) (AccValidation e a) (AccValidation g b)
