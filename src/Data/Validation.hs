@@ -6,8 +6,8 @@
 module Data.Validation
 (
   -- * Data types
-  AccValidation
-, Validation
+  AccValidation(..)
+, Validation(..)
 , ValidationT(..)
 , Validation'
   -- * Prisms
