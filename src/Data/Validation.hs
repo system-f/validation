@@ -746,6 +746,13 @@ _ValidationV' =
     (\(ValidationT (Identity x)) -> _Validation # x)
 {-# INLINE _ValidationV' #-}
 
+_ValidationTx ::
+  Iso (ValidationT e m a) (ValidationT e' m' a') (ValidationTB m e a) (ValidationTB m' e' a')
+_ValidationTx =
+  iso
+    (\(ValidationT x) -> ValidationTB x)
+    (\(ValidationTB x) -> ValidationT x)
+
 _AccValidationV ::
   Validate f =>
   Iso (f e a) (f g b) (AccValidation e a) (AccValidation g b)
