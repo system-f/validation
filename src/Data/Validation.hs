@@ -6,8 +6,8 @@
 module Data.Validation
 (
   -- * Data types
-  AccValidation
-, Validation
+  AccValidation(..)
+, Validation(..)
 , ValidationT(..)
 , Validation'
   -- * Prisms
@@ -22,7 +22,8 @@ import Control.Lens.Getter((^.))
 import Control.Lens.Iso(Swapped(..), Iso, iso)
 import Control.Lens.Prism(Prism, prism)
 import Control.Lens.Review(( # ))
-import Control.Monad(Monad((>>=), return))
+import Control.Monad(Monad((>>=), return), liftM)
+import Control.Monad.Trans.Class(MonadTrans, lift)
 import Data.Bifoldable(Bifoldable(bifoldr))
 import Data.Bifunctor(Bifunctor(bimap))
 import Data.Bitraversable(Bitraversable(bitraverse))
@@ -52,7 +53,8 @@ import Prelude(Show)
 -- >>> import Data.Either(either)
 -- >>> instance (Arbitrary err, Arbitrary a) => Arbitrary (AccValidation err a) where arbitrary = fmap (either (_Failure #) (_Success #)) arbitrary
 -- >>> instance (Arbitrary err, Arbitrary a) => Arbitrary (Validation err a) where arbitrary = fmap (either (_Failure #) (_Success #)) arbitrary
--- >>> instance (Applicative m, Arbitrary err, Arbitrary a) => Arbitrary (ValidationT m err a) where arbitrary = fmap (ValidationT . pure) arbitrary
+-- >>> instance (Applicative m, Arbitrary err, Arbitrary a) => Arbitrary (ValidationT err m a) where arbitrary = fmap (ValidationT . pure) arbitrary
+-- >>> instance (Applicative m, Arbitrary err, Arbitrary a) => Arbitrary (ValidationTB m err a) where arbitrary = fmap (ValidationTB . pure) arbitrary
 
 -- | A value of the type @err@ or @a@, however, the @Applicative@ instance
 -- accumulates values. This is witnessed by the @Semigroup@ context on the instance.
@@ -150,7 +152,7 @@ traverseAccValidation f (AccSuccess a) =
     AccSuccess <$> f a
 traverseAccValidation _ (AccFailure e) =
   pure (AccFailure e)
-{-# INLINE traverseAccValidation #-}  
+{-# INLINE traverseAccValidation #-}
 
 instance Traversable (AccValidation err) where
   traverse =
@@ -304,7 +306,7 @@ Success _  `apValidation` Failure e2 =
   Failure e2
 Success f  `apValidation` Success a  =
   Success (f a)
-{-# INLINE apValidation #-}  
+{-# INLINE apValidation #-}
 
 instance Apply (Validation err) where
   (<.>) =
@@ -339,7 +341,7 @@ foldrValidation f x (Success a) =
   f a x
 foldrValidation _ x (Failure _) =
   x
-{-# INLINE foldrValidation #-}  
+{-# INLINE foldrValidation #-}
 
 instance Foldable (Validation err) where
   foldr =
@@ -369,7 +371,7 @@ bimapValidation f _ (Failure e) =
   Failure (f e)
 bimapValidation _ g (Success a) =
   Success (g a)
-{-# INLINE bimapValidation #-}  
+{-# INLINE bimapValidation #-}
 
 instance Bifunctor Validation where
   bimap =
@@ -396,7 +398,7 @@ bitraverseValidation ::
   (x -> f err)
   -> (y -> f a)
   -> Validation x y
-  -> f (Validation err a) 
+  -> f (Validation err a)
 bitraverseValidation _ g (Success a) =
   Success <$> g a
 bitraverseValidation f _ (Failure e) =
@@ -428,58 +430,58 @@ instance Monad (Validation err) where
     bindValidation
 
 -- | The transformer version of @Validation@.
-data ValidationT m err a =
+data ValidationT err m a =
   ValidationT {
     runValidationT :: m (Validation err a)
   }
 
 type Validation' err a =
-  ValidationT Identity err a
+  ValidationT err Identity a
 
 fmapValidationT ::
   Functor f =>
   (a -> b)
-  -> ValidationT f err a
-  -> ValidationT f err b
+  -> ValidationT err f a
+  -> ValidationT err f b
 fmapValidationT f (ValidationT k) =
   ValidationT (fmap (fmap f) k)
 {-# INLINE fmapValidationT #-}
 
-instance Functor m => Functor (ValidationT m err) where
+instance Functor m => Functor (ValidationT err m) where
   fmap =
     fmapValidationT
 
 apValidationT ::
   Apply f =>
-  ValidationT f err (a -> b)
-  -> ValidationT f err a
-  -> ValidationT f err b
+  ValidationT err f (a -> b)
+  -> ValidationT err f a
+  -> ValidationT err f b
 ValidationT f `apValidationT` ValidationT a =
     ValidationT (liftF2 (<.>) f a)
 {-# INLINE apValidationT #-}
 
-instance Apply m => Apply (ValidationT m err) where
+instance Apply m => Apply (ValidationT err m) where
   (<.>) =
     apValidationT
 
 pureValidationT ::
   Applicative f =>
   a
-  -> ValidationT f err a
+  -> ValidationT err f a
 pureValidationT =
   ValidationT . pure . pure
 {-# INLINE pureValidationT #-}
 
 aplValidationT ::
   Applicative f =>
-  ValidationT f err (a -> b)
-  -> ValidationT f err a
-  -> ValidationT f err b
+  ValidationT err f (a -> b)
+  -> ValidationT err f a
+  -> ValidationT err f b
 ValidationT f `aplValidationT` ValidationT a =
     ValidationT (liftA2 (<*>) f a)
 {-# INLINE aplValidationT #-}
 
-instance Applicative m => Applicative (ValidationT m err) where
+instance Applicative m => Applicative (ValidationT err m) where
   pure =
     pureValidationT
   (<*>) =
@@ -487,16 +489,16 @@ instance Applicative m => Applicative (ValidationT m err) where
 
 altValidationT ::
   (Functor m, Monad m) =>
-  ValidationT m err a
-  -> ValidationT m err a
-  -> ValidationT m err a
+  ValidationT err m a
+  -> ValidationT err m a
+  -> ValidationT err m a
 ValidationT x `altValidationT` ValidationT y =
   ValidationT (x >>= \q -> case q of
     Failure _ -> y
     Success a -> return (Success a))
 {-# INLINE altValidationT #-}
 
-instance (Functor m, Monad m) => Alt (ValidationT m err) where
+instance (Functor m, Monad m) => Alt (ValidationT err m) where
   (<!>) =
     altValidationT
 
@@ -504,100 +506,236 @@ foldrValidationT ::
   Foldable f =>
   (a -> b -> b)
   -> b
-  -> ValidationT f err a
+  -> ValidationT err f a
   -> b
 foldrValidationT f z (ValidationT x) =
   foldr (flip (foldr f)) z x
 {-# INLINE foldrValidationT #-}
 
-instance Foldable m => Foldable (ValidationT m err) where
+instance Foldable m => Foldable (ValidationT err m) where
   foldr =
     foldrValidationT
 
 traverseValidationT ::
   (Traversable g, Applicative f) =>
   (a -> f b)
-  -> ValidationT g err a
-  -> f (ValidationT g err b)
+  -> ValidationT err g a
+  -> f (ValidationT err g b)
 traverseValidationT f (ValidationT x) =
   ValidationT <$> traverse (traverse f) x
 {-# INLINE traverseValidationT #-}
 
-instance Traversable m => Traversable (ValidationT m err) where
+instance Traversable m => Traversable (ValidationT err m) where
   traverse =
     traverseValidationT
 
-bimapValidationT ::
-  Functor f =>
-  (err -> frr)
-  -> (a -> b)
-  -> ValidationT f err a
-  -> ValidationT f frr b
-bimapValidationT f g (ValidationT x) =
-  ValidationT (fmap (bimap f g) x)
-{-# INLINE bimapValidationT #-}
-
-instance Functor m => Bifunctor (ValidationT m) where
-  bimap =
-    bimapValidationT
-
-bifoldrValidationT ::
-  Foldable f =>
-  (err -> b -> b)
-  -> (a -> b -> b)
-  -> b
-  -> ValidationT f err a
-  -> b
-bifoldrValidationT f g z (ValidationT x) =
-  foldr (flip (bifoldr f g)) z x
-{-# INLINE bifoldrValidationT #-}
-
-instance Foldable m => Bifoldable (ValidationT m) where
-  bifoldr =
-    bifoldrValidationT
-
-bitraverseValidationT ::
-  (Traversable g, Applicative f) =>
-  (err -> f frr)
-  -> (a -> f b)
-  -> ValidationT g err a
-  -> f (ValidationT g frr b)
-bitraverseValidationT f g (ValidationT x) =
-  ValidationT <$> traverse (bitraverse f g) x
-{-# INLINE bitraverseValidationT #-}
-
-instance Traversable m => Bitraversable (ValidationT m) where
-  bitraverse =
-    bitraverseValidationT
-
 bindValidationT ::
   Monad f =>
-  ValidationT f err a
-  -> (a -> ValidationT f err b)
-  -> ValidationT f err b
+  ValidationT err f a
+  -> (a -> ValidationT err f b)
+  -> ValidationT err f b
 ValidationT v `bindValidationT` f =
   ValidationT (v >>= \w -> case w of
                              Failure e -> return (Failure e)
                              Success a -> runValidationT (f a))
 {-# INLINE bindValidationT #-}
 
-instance (Apply m, Monad m) => Bind (ValidationT m err) where
+instance (Apply m, Monad m) => Bind (ValidationT err m) where
   (>>-) =
     bindValidationT
 
 returnValidationT ::
   Monad f =>
   a
-  -> ValidationT f err a
+  -> ValidationT err f a
 returnValidationT =
   ValidationT . return . pure
 {-# INLINE returnValidationT #-}
 
-instance Monad m => Monad (ValidationT m err) where
+instance Monad m => Monad (ValidationT err m) where
   return =
     returnValidationT
   (>>=) =
     bindValidationT
+
+instance MonadTrans (ValidationT err) where
+  lift = liftValidationT
+
+liftValidationT ::
+  Monad m =>
+  m a
+  -> ValidationT e m a
+liftValidationT =
+  ValidationT . liftM Success
+{-# INLINE liftValidationT #-}
+
+-- | The bifunctor version of ValidationT
+data ValidationTB m err a =
+  ValidationTB {
+    runValidationTB :: m (Validation err a)
+  }
+
+fmapValidationTB ::
+  Functor f =>
+  (a -> b)
+  -> ValidationTB f err a
+  -> ValidationTB f err b
+fmapValidationTB f (ValidationTB k) =
+  ValidationTB (fmap (fmap f) k)
+{-# INLINE fmapValidationTB #-}
+
+instance Functor m => Functor (ValidationTB m err) where
+  fmap =
+    fmapValidationTB
+
+apValidationTB ::
+  Apply f =>
+  ValidationTB f err (a -> b)
+  -> ValidationTB f err a
+  -> ValidationTB f err b
+ValidationTB f `apValidationTB` ValidationTB a =
+    ValidationTB (liftF2 (<.>) f a)
+{-# INLINE apValidationTB #-}
+
+instance Apply m => Apply (ValidationTB m err) where
+  (<.>) =
+    apValidationTB
+
+pureValidationTB ::
+  Applicative f =>
+  a
+  -> ValidationTB f err a
+pureValidationTB =
+  ValidationTB . pure . pure
+{-# INLINE pureValidationTB #-}
+
+aplValidationTB ::
+  Applicative f =>
+  ValidationTB f err (a -> b)
+  -> ValidationTB f err a
+  -> ValidationTB f err b
+ValidationTB f `aplValidationTB` ValidationTB a =
+    ValidationTB (liftA2 (<*>) f a)
+{-# INLINE aplValidationTB #-}
+
+instance Applicative m => Applicative (ValidationTB m err) where
+  pure =
+    pureValidationTB
+  (<*>) =
+    aplValidationTB
+
+altValidationTB ::
+  (Functor m, Monad m) =>
+  ValidationTB m err a
+  -> ValidationTB m err a
+  -> ValidationTB m err a
+ValidationTB x `altValidationTB` ValidationTB y =
+  ValidationTB (x >>= \q -> case q of
+    Failure _ -> y
+    Success a -> return (Success a))
+{-# INLINE altValidationTB #-}
+
+instance (Functor m, Monad m) => Alt (ValidationTB m err) where
+  (<!>) =
+    altValidationTB
+
+foldrValidationTB ::
+  Foldable f =>
+  (a -> b -> b)
+  -> b
+  -> ValidationTB f err a
+  -> b
+foldrValidationTB f z (ValidationTB x) =
+  foldr (flip (foldr f)) z x
+{-# INLINE foldrValidationTB #-}
+
+instance Foldable m => Foldable (ValidationTB m err) where
+  foldr =
+    foldrValidationTB
+
+traverseValidationTB ::
+  (Traversable g, Applicative f) =>
+  (a -> f b)
+  -> ValidationTB g err a
+  -> f (ValidationTB g err b)
+traverseValidationTB f (ValidationTB x) =
+  ValidationTB <$> traverse (traverse f) x
+{-# INLINE traverseValidationTB #-}
+
+instance Traversable m => Traversable (ValidationTB m err) where
+  traverse =
+    traverseValidationTB
+
+bimapValidationTB ::
+  Functor f =>
+  (err -> frr)
+  -> (a -> b)
+  -> ValidationTB f err a
+  -> ValidationTB f frr b
+bimapValidationTB f g (ValidationTB x) =
+  ValidationTB (fmap (bimap f g) x)
+{-# INLINE bimapValidationTB #-}
+
+instance Functor m => Bifunctor (ValidationTB m) where
+  bimap =
+    bimapValidationTB
+
+bifoldrValidationTB ::
+  Foldable f =>
+  (err -> b -> b)
+  -> (a -> b -> b)
+  -> b
+  -> ValidationTB f err a
+  -> b
+bifoldrValidationTB f g z (ValidationTB x) =
+  foldr (flip (bifoldr f g)) z x
+{-# INLINE bifoldrValidationTB #-}
+
+instance Foldable m => Bifoldable (ValidationTB m) where
+  bifoldr =
+    bifoldrValidationTB
+
+bitraverseValidationTB ::
+  (Traversable g, Applicative f) =>
+  (err -> f frr)
+  -> (a -> f b)
+  -> ValidationTB g err a
+  -> f (ValidationTB g frr b)
+bitraverseValidationTB f g (ValidationTB x) =
+  ValidationTB <$> traverse (bitraverse f g) x
+{-# INLINE bitraverseValidationTB #-}
+
+instance Traversable m => Bitraversable (ValidationTB m) where
+  bitraverse =
+    bitraverseValidationTB
+
+bindValidationTB ::
+  Monad f =>
+  ValidationTB f err a
+  -> (a -> ValidationTB f err b)
+  -> ValidationTB f err b
+ValidationTB v `bindValidationTB` f =
+  ValidationTB (v >>= \w -> case w of
+                             Failure e -> return (Failure e)
+                             Success a -> runValidationTB (f a))
+{-# INLINE bindValidationTB #-}
+instance (Apply m, Monad m) => Bind (ValidationTB m err) where
+  (>>-) =
+    bindValidationTB
+
+returnValidationTB ::
+  Monad f =>
+  a
+  -> ValidationTB f err a
+returnValidationTB =
+  ValidationTB . return . pure
+{-# INLINE returnValidationTB #-}
+
+instance Monad m => Monad (ValidationTB m err) where
+  return =
+    returnValidationTB
+  (>>=) =
+    bindValidationTB
 
 _ValidationV' ::
   Validate f =>
@@ -607,6 +745,13 @@ _ValidationV' =
     (\x -> ValidationT (Identity (x ^. _Validation)))
     (\(ValidationT (Identity x)) -> _Validation # x)
 {-# INLINE _ValidationV' #-}
+
+_ValidationTx ::
+  Iso (ValidationT e m a) (ValidationT e' m' a') (ValidationTB m e a) (ValidationTB m' e' a')
+_ValidationTx =
+  iso
+    (\(ValidationT x) -> ValidationTB x)
+    (\(ValidationTB x) -> ValidationT x)
 
 _AccValidationV ::
   Validate f =>
@@ -700,7 +845,7 @@ _EitherValidationIso =
              Failure e -> Left e
              Success a -> Right a)
 {-# INLINE _EitherValidationIso #-}
-    
+
 _EitherAccValidationIso ::
   Iso (Either e a) (Either g b) (AccValidation e a) (AccValidation g b)
 _EitherAccValidationIso =
@@ -717,7 +862,7 @@ instance Validate Either where
   _Validation =
     _EitherValidationIso
   _AccValidation =
-    _EitherAccValidationIso   
+    _EitherAccValidationIso
   _Either =
     id
 
@@ -730,7 +875,7 @@ _Failure =
     (\x -> case x ^. _Either of
              Left e -> Right e
              Right a -> Left (_Either # Right a))
-{-# INLINE _Failure #-}    
+{-# INLINE _Failure #-}
 
 _Success ::
   Validate f =>
@@ -767,14 +912,14 @@ swappedValidation =
              Success e -> Failure e)
 {-# INLINE swappedValidation #-}
 
-swappedValidationT ::
+swappedValidationTB ::
   Functor k =>
-  Iso (ValidationT k e a) (ValidationT k f b) (ValidationT k a e) (ValidationT k b f)
-swappedValidationT =
+  Iso (ValidationTB k e a) (ValidationTB k f b) (ValidationTB k a e) (ValidationTB k b f)
+swappedValidationTB =
   iso
-    (\(ValidationT x) -> ValidationT (fmap (swapped # ) x))
-    (\(ValidationT x) -> ValidationT (fmap (swapped # ) x))
-{-# INLINE swappedValidationT #-}
+    (\(ValidationTB x) -> ValidationTB (fmap (swapped # ) x))
+    (\(ValidationTB x) -> ValidationTB (fmap (swapped # ) x))
+{-# INLINE swappedValidationTB #-}
 
 instance Swapped AccValidation where
   swapped =
@@ -784,6 +929,6 @@ instance Swapped Validation where
   swapped =
     swappedValidation
 
-instance Functor f => Swapped (ValidationT f) where
+instance Functor f => Swapped (ValidationTB f) where
   swapped =
-    swappedValidationT
+    swappedValidationTB

@@ -1,3 +1,12 @@
+0.4.3
+
+* Rename `ValidationT` to `ValidationTB`
+* Introduce `ValidationT` with `MonadTrans` instance
+
+0.4.2
+
+* Export constructors on `AccValidation` and `Validation`.
+
 0.4.1
 
 * Remove `Alternative` instances. They are obscene.
