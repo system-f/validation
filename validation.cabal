@@ -11,15 +11,15 @@ description:
   <<http://i.imgur.com/Ns5hntl.jpg>>
   .
   A data-type like Either but with an accumulating Applicative
-homepage:           https://github.com/tonymorris/validation
-bug-reports:        https://github.com/tonymorris/validation/issues
+homepage:           https://github.com/NICTA/validation
+bug-reports:        https://github.com/NICTA/validation/issues
 cabal-version:      >= 1.10
 build-type:         Custom
 extra-source-files: changelog
 
 source-repository   head
   type:             git
-  location:         git@github.com:tonymorris/validation.git
+  location:         git@github.com:NICTA/validation.git
 
 flag                small_base
   description:      Choose the new, split-up base package.
