@@ -1,3 +1,12 @@
+0.5.0
+
+* Export the `ValidationB` (formerly `ValidationTB`) data type.
+* Renamed `ValidationTB` to `ValidationB`.
+* Add upper-bounds on some dependencies.
+* Move repository to https://github.com/NICTA/validation.
+* Add README.
+* Update copyright notice for 2015.
+
 0.4.3
 
 * Rename `ValidationT` to `ValidationTB`
