@@ -13,20 +13,20 @@ Download from [hackage](http://hackage.haskell.org/package/validation).
 
 * `AccValidation`
 
-   The `AccValidation` data type is isomorphic to `Either`, but has an instance
-   of `Applicative` that accumulates on the error side. That is to say, if two
-   (or more) errors are encountered, they are appended using a `Semigroup`
-   operation.
+  The `AccValidation` data type is isomorphic to `Either`, but has an instance
+  of `Applicative` that accumulates on the error side. That is to say, if two
+  (or more) errors are encountered, they are appended using a `Semigroup`
+  operation.
 
-   As a consequence of this `Applicative` instance, there is no corresponding
-   `Bind` or `Monad` instance. `AccValidation` is an example of, "An applicative
-   functor that is not a monad."
+  As a consequence of this `Applicative` instance, there is no corresponding
+  `Bind` or `Monad` instance. `AccValidation` is an example of, "An applicative
+  functor that is not a monad."
 
 * `Validation`
 
-   The `Validation` data type is isomorphic to `Either` and has a `Monad`
-   instance that does the same as `Either`. The only difference to `Either` is
-   the constructor names and surrounding library support.
+  The `Validation` data type is isomorphic to `Either` and has a `Monad`
+  instance that does the same as `Either`. The only difference to `Either` is
+  the constructor names and surrounding library support.
 
 * `ValidationT`
 
