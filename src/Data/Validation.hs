@@ -9,6 +9,7 @@ module Data.Validation
   AccValidation(..)
 , Validation(..)
 , ValidationT(..)
+, ValidationB(..)
 , Validation'
   -- * Prisms
 , _Failure
