@@ -1,5 +1,5 @@
 name:               validation
-version:            0.5.0
+version:            0.5.1
 license:            BSD3
 license-file:       LICENSE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
@@ -56,6 +56,12 @@ description:
   no possible `MonadTrans` instance. Consequently, the `ValidationT` data type
   provides a `MonadTrans` instance (but not a `Bifunctor` instance). Library
   support is provided to exploit the isomorphism to `ValidationT`.
+  .
+  * `Validation'`
+  .
+  The `Validation' err a` type-alias is equivalent to 
+  `ValidationT err Identity a` and so is isomorphic to `Either` and others.
+  Libraries are supplied accordingly.
 
 homepage:           https://github.com/NICTA/validation
 bug-reports:        https://github.com/NICTA/validation/issues

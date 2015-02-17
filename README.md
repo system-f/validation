@@ -49,3 +49,9 @@ Download from [hackage](http://hackage.haskell.org/package/validation).
   no possible `MonadTrans` instance. Consequently, the `ValidationT` data type
   provides a `MonadTrans` instance (but not a `Bifunctor` instance). Library
   support is provided to exploit the isomorphism to `ValidationT`.
+
+* `Validation'`
+
+  The `Validation' err a` type-alias is equivalent to 
+  `ValidationT err Identity a` and so is isomorphic to `Either` and others.
+  Libraries are supplied accordingly.
