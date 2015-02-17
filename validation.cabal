@@ -17,8 +17,6 @@ description:
   `lens`-related functions for converting between each and abstracting over their
   similarities.
   .
-  Download from [hackage](http://hackage.haskell.org/package/validation).
-  .
   * `AccValidation`
   .
   The `AccValidation` data type is isomorphic to `Either`, but has an instance
