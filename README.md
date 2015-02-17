@@ -32,7 +32,7 @@ Download from [hackage](http://hackage.haskell.org/package/validation).
 
   The `ValidationT` data type is the monad transformer for `Validation`. An
   instance of `MonadTrans` is provided for `(ValidationT err)`. Due to the
-  arrangement of the `ValidationT` type constructor, which permits a `MonadTrans
+  arrangement of the `ValidationT` type constructor, which permits a `MonadTrans`
   instance, there is no possible `Bifunctor` instance. Consequently, the
   `ValidationB` data type provides a `Bifunctor` instance (but not a
   `MonadTrans` instance). Library support is provided to exploit the isomorphism
