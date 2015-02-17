@@ -4,7 +4,7 @@ license:            BSD3
 license-file:       LICENSE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
 maintainer:         Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
-copyright:          Copyright (C) 2014 NICTA Limited
+copyright:          Copyright (C) 2014,2015 NICTA Limited
 synopsis:           A data-type like Either but with an accumulating Applicative
 category:           Data
 description:        
@@ -30,6 +30,7 @@ library
 
   build-depends:
                       base < 5 && >= 3
+                    , mtl
                     , semigroups >= 0.8
                     , semigroupoids >= 4.0
                     , bifunctors >= 3.0
