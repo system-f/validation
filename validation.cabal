@@ -10,7 +10,8 @@ category:           Data
 description:        
   <<http://i.imgur.com/Ns5hntl.jpg>>
   .
-  A data-type like Either but with an accumulating Applicative
+  Several data-types like Either but with differing properties and type-class
+  instances.
 homepage:           https://github.com/NICTA/validation
 bug-reports:        https://github.com/NICTA/validation/issues
 cabal-version:      >= 1.10
