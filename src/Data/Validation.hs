@@ -436,8 +436,8 @@ data ValidationT err m a =
     runValidationT :: m (Validation err a)
   }
 
-type Validation' err a =
-  ValidationT err Identity a
+type Validation' err =
+  ValidationT err Identity
 
 fmapValidationT ::
   Functor f =>
