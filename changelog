@@ -1,3 +1,7 @@
+0.5.2
+
+* Remove LANGUAGE Safe because won't build against lens-4.13 or higher otherwise.
+
 0.5.1
 
 * Update documentation
