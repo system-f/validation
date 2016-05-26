@@ -87,7 +87,7 @@ library
                     , semigroupoids >= 4.0
                     , bifunctors    >= 3.0
                     , lens          >= 4.0 && < 5
-                    , transformers  >= 0.3 && < 0.5
+                    , transformers  >= 0.3 && < 0.6
 
   ghc-options:
                     -Wall
