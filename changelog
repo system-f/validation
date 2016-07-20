@@ -1,3 +1,7 @@
+0.5.3
+
+* Update `transformers` dependency to work with GHC8.
+
 0.5.2
 
 * Remove LANGUAGE Safe because won't build against lens-4.13 or higher otherwise.
