@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | Data types similar to @Data.Either@ that are explicit about failure and success.
 module Data.Validation
@@ -36,7 +37,7 @@ import Data.Functor(Functor(fmap))
 import Data.Functor.Alt(Alt((<!>)))
 import Data.Functor.Apply(Apply((<.>)))
 import Data.Functor.Bind(Bind((>>-)), liftF2)
-import Data.Functor.Identity(Identity(Identity))
+import Data.Functor.Identity(Identity(Identity, runIdentity))
 import Data.Monoid(Monoid(mappend, mempty))
 import Data.Ord(Ord)
 import Data.Semigroup(Semigroup((<>)))
@@ -125,7 +126,7 @@ AccSuccess a `altAccValidation` _ =
   AccSuccess a
 {-# INLINE altAccValidation #-}
 
-instance Semigroup err => Alt (AccValidation err) where
+instance Alt (AccValidation err) where
   (<!>) =
     altAccValidation
 
@@ -488,7 +489,7 @@ instance Applicative m => Applicative (ValidationT err m) where
     aplValidationT
 
 altValidationT ::
-  (Functor m, Monad m) =>
+  Monad m =>
   ValidationT err m a
   -> ValidationT err m a
   -> ValidationT err m a
@@ -625,7 +626,7 @@ instance Applicative m => Applicative (ValidationB m err) where
     aplValidationB
 
 altValidationB ::
-  (Functor m, Monad m) =>
+  Monad m =>
   ValidationB m err a
   -> ValidationB m err a
   -> ValidationB m err a
@@ -865,6 +866,12 @@ instance Validate Either where
     _EitherAccValidationIso
   _Either =
     id
+
+instance (m ~ Identity) => Validate (ValidationB m) where
+  _Validation =
+    iso
+      (\(ValidationB x) -> runIdentity x)
+      (ValidationB . Identity)
 
 _Failure ::
   Validate f =>
