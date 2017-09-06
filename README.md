@@ -1,6 +1,6 @@
 # Validation
 
-![NICTA](http://i.imgur.com/Ns5hntl.jpg)
+![Data61](http://i.imgur.com/uZnp9ke.jpg)
 
 Several data-types like Either but with differing properties and type-class
 instances.
