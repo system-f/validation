@@ -1,6 +1,7 @@
 0.5.5
 
 * Raise upper bounds on base.
+* Include nix build.
 
 0.5.4
 
