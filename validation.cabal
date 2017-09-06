@@ -1,5 +1,5 @@
 name:               validation
-version:            0.5.4
+version:            0.5.5
 license:            BSD3
 license-file:       LICENSE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
@@ -8,7 +8,7 @@ copyright:          Copyright (C) 2010-2013 Tony Morris, Nick Partridge
 copyright:          Copyright (C) 2014,2015 NICTA Limited
 synopsis:           A data-type like Either but with an accumulating Applicative
 category:           Data
-description:        
+description:
   <<http://i.imgur.com/Ns5hntl.jpg>>
   .
   Several data-types like Either but with differing properties and type-class
@@ -59,7 +59,7 @@ description:
   .
   * `Validation'`
   .
-  The `Validation' err a` type-alias is equivalent to 
+  The `Validation' err a` type-alias is equivalent to
   `ValidationT err Identity a` and so is isomorphic to `Either` and others.
   Libraries are supplied accordingly.
 
