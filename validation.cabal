@@ -1,7 +1,7 @@
 name:               validation
 version:            0.5.5
 license:            BSD3
-license-file:       LICENSE
+license-file:       LICENCE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
 maintainer:         Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>, Queensland Functional Programming Lab <oᴉ˙ldɟb@llǝʞsɐɥ>
 copyright:          Copyright (C) 2010-2013 Tony Morris, Nick Partridge
