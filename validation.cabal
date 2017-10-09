@@ -77,6 +77,12 @@ source-repository   head
 flag                small_base
   description:      Choose the new, split-up base package.
 
+custom-setup
+  setup-depends:
+    base          >= 4.9 && <5,
+    Cabal         >= 1.10,
+    cabal-doctest >= 1.0.1 && <1.1
+
 library
   default-language:
                     Haskell2010
@@ -119,6 +125,7 @@ test-suite doctests
                     , directory >= 1.1
                     , QuickCheck >= 2.0
                     , template-haskell >= 2.8
+                    , validation
 
   ghc-options:
                     -Wall
