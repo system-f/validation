@@ -11,7 +11,8 @@ mkDerivation {
     base bifunctors lens mtl semigroupoids semigroups transformers
   ];
   testHaskellDepends = [
-    base directory doctest filepath QuickCheck template-haskell
+    base cabal-doctest directory doctest filepath QuickCheck
+    template-haskell
   ];
   homepage = "https://github.com/qfpl/validation";
   description = "A data-type like Either but with an accumulating Applicative";
