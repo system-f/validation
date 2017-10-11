@@ -1,19 +1,14 @@
-{ mkDerivation, base, bifunctors, Cabal, cabal-doctest, directory
-, doctest, filepath, lens, mtl, QuickCheck, semigroupoids
-, semigroups, stdenv, template-haskell, transformers
+{ mkDerivation, base, bifunctors, hedgehog, HUnit, lens, mtl
+, semigroupoids, semigroups, stdenv, transformers
 }:
 mkDerivation {
   pname = "validation";
   version = "0.6.0";
   src = ./.;
-  setupHaskellDepends = [ base Cabal cabal-doctest ];
   libraryHaskellDepends = [
     base bifunctors lens mtl semigroupoids semigroups transformers
   ];
-  testHaskellDepends = [
-    base cabal-doctest directory doctest filepath QuickCheck
-    template-haskell
-  ];
+  testHaskellDepends = [ base hedgehog HUnit lens semigroups ];
   homepage = "https://github.com/qfpl/validation";
   description = "A data-type like Either but with an accumulating Applicative";
   license = stdenv.lib.licenses.bsd3;
