@@ -2,12 +2,18 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- | Data types similar to @Data.Either@ that are explicit about failure and success.
+-- | A data type similar to @Data.Either@ that accumulates failures.
 module Data.Validation
 (
-  -- * Data types
+  -- * Data type
   AccValidation(..)
   -- * Prisms
+  -- | These prisms are useful for writing code which is polymorphic in its
+  -- choice of Either or AccValidation. This choice can then be made later by a
+  -- user, depending on their needs.
+  --
+  -- An example of this style of usage can be found
+  -- <https://github.com/qfpl/validation/blob/master/examples/src/PolymorphicEmail.hs here>
 , _Failure
 , _Success
   -- * Isomorphisms
@@ -46,9 +52,15 @@ import Prelude(Show)
 -- >>> import Data.Either(either)
 -- >>> instance (Arbitrary err, Arbitrary a) => Arbitrary (AccValidation err a) where arbitrary = fmap (either (_Failure #) (_Success #)) arbitrary
 
--- | A value of the type @err@ or @a@, however, the @Applicative@ instance
--- accumulates values. This is witnessed by the @Semigroup@ context on the instance.
--- /Note that there is no Monad such that ap = (<*>)./
+-- | An @AccValidation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
+-- the 'Applicative' instance for @AccValidation@ /accumulates/ errors using a 'Semigroup' on @err@.
+-- In contrast, the @Applicative@ for @Either@ returns only the first error.
+--
+-- A consequence of this is that @AccValidation@ has no 'Data.Functor.Bind.Bind' or 'Control.Monad.Monad' instance. This is because
+-- such an instance would violate the law that a Monad's 'Control.Monad.ap' must equal the
+-- @Applicative@'s 'Control.Applicative.<*>'
+--
+-- An example of typical usage can be found <https://github.com/qfpl/validation/blob/master/examples/src/Email.hs here>.
 --
 -- >>> _Success # (+1) <*> _Success # 7 :: AccValidation String Int
 -- AccSuccess 8
@@ -265,6 +277,10 @@ _EitherV =
                            Right a -> AccSuccess a)
 {-# INLINE _EitherV #-}
 
+-- | The @Validate@ class carries around witnesses that the type @f@ is isomorphic
+-- to AccValidation, and hence isomorphic to Either.
+--
+-- Its main use is to make '_Success' and '_Failure' work.
 class Validate f where
   _AccValidation ::
     Iso (f e a) (f g b) (AccValidation e a) (AccValidation g b)
@@ -310,6 +326,7 @@ instance Validate Either where
   _Either =
     id
 
+-- | This prism generalises 'Control.Lens.Prism._Left'. It targets the failure case of either 'Either' or 'AccValidation'.
 _Failure ::
   Validate f =>
   Prism (f e1 a) (f e2 a) e1 e2
@@ -321,6 +338,7 @@ _Failure =
              Right a -> Left (_Either # Right a))
 {-# INLINE _Failure #-}
 
+-- | This prism generalises 'Control.Lens.Prism._Right'. It targets the success case of either 'Either' or 'AccValidation'.
 _Success ::
   Validate f =>
   Prism (f e a) (f e b) a b
