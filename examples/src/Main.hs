@@ -5,7 +5,7 @@ import Control.Lens.Iso(from)
 import Control.Lens.Review(( # ))
 import Data.Bifoldable(bitraverse_, bimapM_)
 import Data.Bifunctor(second, first)
-import Data.Validation(AccValidation, Validation, _AccValidation, _Validation, _Success, _Failure)
+import Data.Validation(AccValidation, _AccValidation, _Either, _Success, _Failure)
 
 main ::
   IO ()
@@ -21,14 +21,9 @@ successAcc ::
 successAcc =
   _Success # "A"
 
-successVal ::
-  Validation e String
-successVal =
-  _Success # "A"
-
-successValT ::
+successEither ::
   Either e String
-successValT =
+successEither =
   _Success # "A"
 
 failureAcc ::
@@ -76,5 +71,4 @@ exConvert ::
 exConvert =
   do
       print (successAcc ^. from _AccValidation :: Either Int String)
-      print (successVal ^. from _Validation :: Either Int String)
-      print (Left 3 ^. _Validation :: Validation Int String)
+      print (successEither ^. from _Either :: AccValidation Int String)
