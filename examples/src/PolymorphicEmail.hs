@@ -1,9 +1,8 @@
-module Email where
 -- Modification of the Email example, that leaves the validation
 -- functions polymorphic.
 
 -- This lets us choose whether to accumulate all errors, by specialising
--- to AccValidation, or abort on the first error with Validation.
+-- to AccValidation, or abort on the first error with Either.
 
 -- Aside from main, the code is unchanged but the type signatures have
 -- been relaxed to be as polymorphic as possible.
@@ -71,8 +70,8 @@ asAcc :: AccValidation a b -> AccValidation a b
 asAcc = id
 
 -- Helper to force a validation to Validation
-asVal :: Validation a b -> Validation a b
-asVal = id
+asEither :: Either a b -> Either a b
+asEither = id
 
 main :: IO ()
 main = do
@@ -82,5 +81,5 @@ main = do
   putStrLn $ "email \"bob@gmailcom\":  " ++ show (asAcc failurePeriod)
   putStrLn $ "email \"\":              " ++ show (asAcc failureAll)
   putStrLn "Stop at the first error"
-  putStrLn $ "email \"bob@gmail.com\": " ++ show (asVal success)
-  putStrLn $ "email \"\":              " ++ show (asVal failureAll)
+  putStrLn $ "email \"bob@gmail.com\": " ++ show (asEither success)
+  putStrLn $ "email \"\":              " ++ show (asEither failureAll)

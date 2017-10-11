@@ -6,17 +6,18 @@ author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, 
 maintainer:         Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
 copyright:          Copyright (C) 2010-2013 Tony Morris, Nick Partridge
 copyright:          Copyright (C) 2014,2015 NICTA Limited
+copyright:          Copyright (c) 2016,2017, Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230.
 synopsis:           Examples for the Validation package
 category:           Data
 description:        Examples for the validation package
-homepage:           https://github.com/NICTA/validation
-bug-reports:        https://github.com/NICTA/validation/issues
+homepage:           https://github.com/qfpl/validation
+bug-reports:        https://github.com/qfpl/validation/issues
 cabal-version:      >= 1.10
 build-type:         Simple
 
 source-repository   head
   type:             git
-  location:         git@github.com:NICTA/validation.git
+  location:         git@github.com:qfpl/validation.git
 
 flag                small_base
   description:      Choose the new, split-up base package.
