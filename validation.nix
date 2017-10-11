@@ -4,7 +4,7 @@
 }:
 mkDerivation {
   pname = "validation";
-  version = "0.5.5";
+  version = "0.6.0";
   sha256 = "0fgwgpwcisbabzyq11pkj57gp0kydi4px9gmgzqcq2hn6xb43qkd";
   setupHaskellDepends = [ base Cabal cabal-doctest ];
   libraryHaskellDepends = [

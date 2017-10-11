@@ -1,3 +1,8 @@
+0.6.0
+
+* Delete `Validation`, `ValidationB`, `ValidationT`, `Validation'`
+* Remove `_Validation` member from `Validate` class
+
 0.5.5
 
 * Raise upper bounds on base.
