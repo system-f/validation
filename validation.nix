@@ -5,7 +5,7 @@
 mkDerivation {
   pname = "validation";
   version = "0.6.0";
-  sha256 = "0fgwgpwcisbabzyq11pkj57gp0kydi4px9gmgzqcq2hn6xb43qkd";
+  src = ./.;
   setupHaskellDepends = [ base Cabal cabal-doctest ];
   libraryHaskellDepends = [
     base bifunctors lens mtl semigroupoids semigroups transformers
