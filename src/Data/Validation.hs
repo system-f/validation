@@ -43,14 +43,6 @@ import Data.Traversable(Traversable(traverse))
 import Data.Typeable(Typeable)
 import Prelude(Show)
 
--- $setup
--- >>> import Prelude(Num(..))
--- >>> import Data.Eq(Eq(..))
--- >>> import Data.String(String)
--- >>> import Data.Int(Int)
--- >>> import Test.QuickCheck
--- >>> import Data.Either(either)
--- >>> instance (Arbitrary err, Arbitrary a) => Arbitrary (AccValidation err a) where arbitrary = fmap (either (_Failure #) (_Success #)) arbitrary
 
 -- | An @AccValidation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
 -- the 'Applicative' instance for @AccValidation@ /accumulates/ errors using a 'Semigroup' on @err@.
@@ -62,17 +54,6 @@ import Prelude(Show)
 --
 -- An example of typical usage can be found <https://github.com/qfpl/validation/blob/master/examples/src/Email.hs here>.
 --
--- >>> _Success # (+1) <*> _Success # 7 :: AccValidation String Int
--- AccSuccess 8
---
--- >>> _Failure # ["f1"] <*> _Success # 7 :: AccValidation [String] Int
--- AccFailure ["f1"]
---
--- >>> _Success # (+1) <*> _Failure # ["f2"] :: AccValidation [String] Int
--- AccFailure ["f2"]
---
--- >>> _Failure # ["f1"] <*> _Failure # ["f2"] :: AccValidation [String] Int
--- AccFailure ["f1","f2"]
 data AccValidation err a =
   AccFailure err
   | AccSuccess a
@@ -222,9 +203,6 @@ AccSuccess a1 `appsAccValidation` AccSuccess _ =
   AccSuccess a1
 {-# INLINE appsAccValidation #-}
 
--- |
---
--- prop> ((x <> y) <> z) == (x <> (y <> z :: AccValidation [String] Int))
 instance Semigroup e => Semigroup (AccValidation e a) where
   (<>) =
     appsAccValidation
@@ -251,13 +229,6 @@ emptyAccValidation =
   AccFailure mempty
 {-# INLINE emptyAccValidation #-}
 
--- |
---
--- prop> ((x `mappend` y) `mappend` z) == (x `mappend` (y `mappend` z :: AccValidation [String] Int))
---
--- prop> mempty `mappend` x == (x :: AccValidation [String] Int)
---
--- prop> x `mappend` mempty == (x :: AccValidation [String] Int)
 instance Monoid e => Monoid (AccValidation e a) where
   mappend =
     appmAccValidation
