@@ -18,7 +18,7 @@ module Data.Validation
 , orElse
 , valueOr
 , ensure
-, diagonal
+, codiagonal
   -- * Prisms
   -- | These prisms are useful for writing code which is polymorphic in its
   -- choice of Either or AccValidation. This choice can then be made later by a
@@ -319,9 +319,9 @@ valueOr ea v = case v of
   AccFailure e -> ea e
   AccSuccess a -> a
 
--- | 'diagonal' gets the value out of either side.
-diagonal :: AccValidation a a -> a
-diagonal = valueOr id
+-- | 'codiagonal' gets the value out of either side.
+codiagonal :: AccValidation a a -> a
+codiagonal = valueOr id
 
 -- | 'ensure' leaves the validation unchanged when the predicate holds, or
 -- fails with @e@ otherwise.
