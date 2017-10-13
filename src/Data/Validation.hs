@@ -11,7 +11,7 @@ module Data.Validation
 , validate
 , validationNel
 , fromEither
-, translateErrors
+, liftError
   -- * Functions on validations
 , validation
 , toEither
@@ -283,19 +283,19 @@ validate :: e -> (a -> Bool) -> a -> AccValidation e a
 validate e p a =
   if p a then AccSuccess a else AccFailure e
 
--- | 'validationNel' is 'translateErrors' specialised to 'NonEmpty' lists, since
+-- | 'validationNel' is 'liftError' specialised to 'NonEmpty' lists, since
 -- they are a common semigroup to use.
 validationNel :: Either e a -> AccValidation (NonEmpty e) a
-validationNel = translateErrors pure
+validationNel = liftError pure
 
 -- | Converts from 'Either' to 'AccValidation'.
 fromEither :: Either e a -> AccValidation e a
-fromEither = translateErrors id
+fromEither = liftError id
 
--- | 'translateErrors' is useful for converting an 'Either' to an 'AccValidation'
+-- | 'liftError' is useful for converting an 'Either' to an 'AccValidation'
 -- when the @Left@ of the 'Either' needs to be lifted into a 'Semigroup'.
-translateErrors :: (b -> e) -> Either b a -> AccValidation e a
-translateErrors f = either (AccFailure . f) AccSuccess
+liftError :: (b -> e) -> Either b a -> AccValidation e a
+liftError f = either (AccFailure . f) AccSuccess
 
 -- | 'validation' is the catamorphism for @AccValidation@.
 validation :: (e -> c) -> (a -> c) -> AccValidation e a -> c
