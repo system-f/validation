@@ -30,11 +30,12 @@ module Data.Validation
 , _Success
   -- * Isomorphisms
 , Validate(..)
+, revalidate
 ) where
 
 import Control.Applicative(Applicative((<*>), pure), (<$>))
 import Control.Lens.Getter((^.))
-import Control.Lens.Iso(Swapped(..), Iso, iso)
+import Control.Lens.Iso(Swapped(..), Iso, iso, from)
 import Control.Lens.Prism(Prism, prism)
 import Control.Lens.Review(( # ))
 import Data.Bifoldable(Bifoldable(bifoldr))
@@ -398,4 +399,8 @@ _Success =
              Left e -> Left (_Either # Left e)
              Right a -> Right a)
 {-# INLINE _Success #-}
+
+-- | 'revalidate' converts between any two instances of 'Validate'.
+revalidate :: (Validate f, Validate g) => Iso (f e1 s) (f e2 t) (g e1 s) (g e2 t)
+revalidate = _AccValidation . from _AccValidation
 
