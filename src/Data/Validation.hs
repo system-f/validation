@@ -7,6 +7,18 @@ module Data.Validation
 (
   -- * Data type
   AccValidation(..)
+  -- * Constructing validations
+, validate
+, validationNel
+, fromEither
+, liftError
+  -- * Functions on validations
+, validation
+, toEither
+, orElse
+, valueOr
+, ensure
+, codiagonal
   -- * Prisms
   -- | These prisms are useful for writing code which is polymorphic in its
   -- choice of Either or AccValidation. This choice can then be made later by a
@@ -18,24 +30,28 @@ module Data.Validation
 , _Success
   -- * Isomorphisms
 , Validate(..)
+, revalidate
 ) where
 
 import Control.Applicative(Applicative((<*>), pure), (<$>))
+import Control.Lens (over)
 import Control.Lens.Getter((^.))
-import Control.Lens.Iso(Swapped(..), Iso, iso)
+import Control.Lens.Iso(Swapped(..), Iso, iso, from)
 import Control.Lens.Prism(Prism, prism)
 import Control.Lens.Review(( # ))
 import Data.Bifoldable(Bifoldable(bifoldr))
 import Data.Bifunctor(Bifunctor(bimap))
 import Data.Bitraversable(Bitraversable(bitraverse))
+import Data.Bool (Bool)
 import Data.Data(Data)
-import Data.Either(Either(Left, Right))
+import Data.Either(Either(Left, Right), either)
 import Data.Eq(Eq)
 import Data.Foldable(Foldable(foldr))
-import Data.Function(id)
+import Data.Function((.), ($), id)
 import Data.Functor(Functor(fmap))
 import Data.Functor.Alt(Alt((<!>)))
 import Data.Functor.Apply(Apply((<.>)))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid(Monoid(mappend, mempty))
 import Data.Ord(Ord)
 import Data.Semigroup(Semigroup((<>)))
@@ -248,10 +264,101 @@ _EitherV =
                            Right a -> AccSuccess a)
 {-# INLINE _EitherV #-}
 
+swappedAccValidation ::
+  Iso (AccValidation e a) (AccValidation f b) (AccValidation a e) (AccValidation b f)
+swappedAccValidation =
+  iso
+    (\v -> case v of
+             AccFailure e -> AccSuccess e
+             AccSuccess a -> AccFailure a)
+    (\v -> case v of
+             AccFailure a -> AccSuccess a
+             AccSuccess e -> AccFailure e)
+{-# INLINE swappedAccValidation #-}
+
+instance Swapped AccValidation where
+  swapped =
+    swappedAccValidation
+
+-- | 'validate's the @a@ with the given predicate, returning @e@ if the predicate does not hold.
+--
+-- This can be thought of as having the less general type:
+--
+-- @
+-- validate :: e -> (a -> Bool) -> a -> AccValidation e a
+-- @
+validate :: Validate v => e -> (a -> Bool) -> a -> v e a
+validate e p a =
+  if p a then _Success # a else _Failure # e
+
+-- | 'validationNel' is 'liftError' specialised to 'NonEmpty' lists, since
+-- they are a common semigroup to use.
+validationNel :: Either e a -> AccValidation (NonEmpty e) a
+validationNel = liftError pure
+
+-- | Converts from 'Either' to 'AccValidation'.
+fromEither :: Either e a -> AccValidation e a
+fromEither = liftError id
+
+-- | 'liftError' is useful for converting an 'Either' to an 'AccValidation'
+-- when the @Left@ of the 'Either' needs to be lifted into a 'Semigroup'.
+liftError :: (b -> e) -> Either b a -> AccValidation e a
+liftError f = either (AccFailure . f) AccSuccess
+
+-- | 'validation' is the catamorphism for @AccValidation@.
+validation :: (e -> c) -> (a -> c) -> AccValidation e a -> c
+validation ec ac v = case v of
+  AccFailure e -> ec e
+  AccSuccess a -> ac a
+
+-- | Converts from 'AccValidation' to 'Either'.
+toEither :: AccValidation e a -> Either e a
+toEither = validation Left Right
+
+-- | @v 'orElse' a@ returns @a@ when @v@ is AccFailure, and the @a@ in @AccSuccess a@.
+--
+-- This can be thought of as having the less general type:
+--
+-- @
+-- orElse :: AccValidation e a -> a -> a
+-- @
+orElse :: Validate v => v e a -> a -> a
+orElse v a = case v ^. _AccValidation of
+  AccFailure _ -> a
+  AccSuccess x -> x
+
+-- | Return the @a@ or run the given function over the @e@.
+--
+-- This can be thought of as having the less general type:
+--
+-- @
+-- valueOr :: (e -> a) -> AccValidation e a -> a
+-- @
+valueOr :: Validate v => (e -> a) -> v e a -> a
+valueOr ea v = case v ^. _AccValidation of
+  AccFailure e -> ea e
+  AccSuccess a -> a
+
+-- | 'codiagonal' gets the value out of either side.
+codiagonal :: AccValidation a a -> a
+codiagonal = valueOr id
+
+-- | 'ensure' leaves the validation unchanged when the predicate holds, or
+-- fails with @e@ otherwise.
+--
+-- This can be thought of as having the less general type:
+--
+-- @
+-- ensure :: e -> (a -> Bool) -> AccValidation e a -> AccValidation e a
+-- @
+ensure :: Validate v => e -> (a -> Bool) -> v e a -> v e a
+ensure e p =
+  over _AccValidation $ \v -> case v of
+    AccFailure x -> AccFailure x
+    AccSuccess a -> validate e p a
+
 -- | The @Validate@ class carries around witnesses that the type @f@ is isomorphic
 -- to AccValidation, and hence isomorphic to Either.
---
--- Its main use is to make '_Success' and '_Failure' work.
 class Validate f where
   _AccValidation ::
     Iso (f e a) (f g b) (AccValidation e a) (AccValidation g b)
@@ -283,12 +390,8 @@ _EitherAccValidationIso ::
   Iso (Either e a) (Either g b) (AccValidation e a) (AccValidation g b)
 _EitherAccValidationIso =
   iso
-    (\x -> case x of
-             Left e -> AccFailure e
-             Right a -> AccSuccess a)
-    (\x -> case x of
-             AccFailure e -> Left e
-             AccSuccess a -> Right a)
+    fromEither
+    toEither
 {-# INLINE _EitherAccValidationIso #-}
 
 instance Validate Either where
@@ -321,19 +424,7 @@ _Success =
              Right a -> Right a)
 {-# INLINE _Success #-}
 
-swappedAccValidation ::
-  Iso (AccValidation e a) (AccValidation f b) (AccValidation a e) (AccValidation b f)
-swappedAccValidation =
-  iso
-    (\v -> case v of
-             AccFailure e -> AccSuccess e
-             AccSuccess a -> AccFailure a)
-    (\v -> case v of
-             AccFailure a -> AccSuccess a
-             AccSuccess e -> AccFailure e)
-{-# INLINE swappedAccValidation #-}
-
-instance Swapped AccValidation where
-  swapped =
-    swappedAccValidation
+-- | 'revalidate' converts between any two instances of 'Validate'.
+revalidate :: (Validate f, Validate g) => Iso (f e1 s) (f e2 t) (g e1 s) (g e2 t)
+revalidate = _AccValidation . from _AccValidation
 
