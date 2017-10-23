@@ -19,6 +19,8 @@ module Data.Validation
 , valueOr
 , ensure
 , codiagonal
+, validationed
+, bindValidation
   -- * Prisms
   -- | These prisms are useful for writing code which is polymorphic in its
   -- choice of Either or AccValidation. This choice can then be made later by a
@@ -34,7 +36,7 @@ module Data.Validation
 ) where
 
 import Control.Applicative(Applicative((<*>), pure), (<$>))
-import Control.Lens (over)
+import Control.Lens (over, under)
 import Control.Lens.Getter((^.))
 import Control.Lens.Iso(Swapped(..), Iso, iso, from)
 import Control.Lens.Prism(Prism, prism)
@@ -356,6 +358,28 @@ ensure e p =
   over _AccValidation $ \v -> case v of
     AccFailure x -> AccFailure x
     AccSuccess a -> validate e p a
+
+-- | Run a function on anything with a Validate instance (usually Either)
+-- as if it were a function on AccValidation
+--
+-- This can be thought of as having the type
+--
+-- @(Either e a -> Either e' a') -> AccValidation e a -> AccValidation e' a'@
+validationed :: Validate v => (v e a -> v e' a') -> AccValidation e a -> AccValidation e' a'
+validationed f = under _AccValidation f
+
+-- | @bindValidation@ binds through an AccValidation, which is useful for
+-- composing AccValidations sequentially. Note that despite having a bind
+-- function of the correct type, AccValidation is not a monad.
+-- The reason is, this bind does not accumulate errors, so it does not
+-- agree with the Applicative instance.
+--
+-- There is nothing wrong with using this function, it just does not make a
+-- valid @Monad@ instance.
+bindValidation :: AccValidation e a -> (a -> AccValidation e b) -> AccValidation e b
+bindValidation v f = case v of
+  AccFailure e -> AccFailure e
+  AccSuccess a -> f a
 
 -- | The @Validate@ class carries around witnesses that the type @f@ is isomorphic
 -- to AccValidation, and hence isomorphic to Either.
