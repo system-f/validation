@@ -77,38 +77,23 @@ data AccValidation err a =
   | AccSuccess a
   deriving (Eq, Ord, Show, Data, Typeable)
 
-fmapAccValidation ::
-  (a -> b)
-  -> AccValidation err a
-  -> AccValidation err b
-fmapAccValidation _ (AccFailure e) =
-  AccFailure e
-fmapAccValidation f (AccSuccess a) =
-  AccSuccess (f a)
-{-# INLINE fmapAccValidation #-}
-
 instance Functor (AccValidation err) where
-  fmap =
-    fmapAccValidation
-
-apAccValidation ::
-  Semigroup err =>
-  AccValidation err (a -> b)
-  -> AccValidation err a
-  -> AccValidation err b
-AccFailure e1 `apAccValidation` AccFailure e2 =
-  AccFailure (e1 <> e2)
-AccFailure e1 `apAccValidation` AccSuccess _  =
-  AccFailure e1
-AccSuccess _  `apAccValidation` AccFailure e2 =
-  AccFailure e2
-AccSuccess f  `apAccValidation` AccSuccess a  =
-  AccSuccess (f a)
-{-# INLINE apAccValidation #-}
+  fmap _ (AccFailure e) =
+    AccFailure e
+  fmap f (AccSuccess a) =
+    AccSuccess (f a)
+  {-# INLINE fmap #-}
 
 instance Semigroup err => Apply (AccValidation err) where
-  (<.>) =
-    apAccValidation
+  AccFailure e1 <.> AccFailure e2 =
+    AccFailure (e1 <> e2)
+  AccFailure e1 <.> AccSuccess _  =
+    AccFailure e1
+  AccSuccess _  <.> AccFailure e2 =
+    AccFailure e2
+  AccSuccess f  <.> AccSuccess a  =
+    AccSuccess (f a)
+  {-# INLINE (<.>) #-}
 
 instance Semigroup err => Applicative (AccValidation err) where
   pure =
@@ -116,171 +101,87 @@ instance Semigroup err => Applicative (AccValidation err) where
   (<*>) =
     (<.>)
 
-altAccValidation ::
-  AccValidation err a
-  -> AccValidation err a
-  -> AccValidation err a
-AccFailure _ `altAccValidation` x =
-  x
-AccSuccess a `altAccValidation` _ =
-  AccSuccess a
-{-# INLINE altAccValidation #-}
-
 instance Alt (AccValidation err) where
-  (<!>) =
-    altAccValidation
-
-foldrAccValidation ::
-  (a -> b -> b)
-  -> b
-  -> AccValidation err a -> b
-foldrAccValidation f x (AccSuccess a) =
-  f a x
-foldrAccValidation _ x (AccFailure _) =
-  x
-{-# INLINE foldrAccValidation #-}
+  AccFailure _ <!> x =
+    x
+  AccSuccess a <!> _ =
+    AccSuccess a
+  {-# INLINE (<!>) #-}
 
 instance Foldable (AccValidation err) where
-  foldr =
-    foldrAccValidation
-
-traverseAccValidation ::
-  Applicative f =>
-  (a -> f b)
-  -> AccValidation err a
-  -> f (AccValidation err b)
-traverseAccValidation f (AccSuccess a) =
-    AccSuccess <$> f a
-traverseAccValidation _ (AccFailure e) =
-  pure (AccFailure e)
-{-# INLINE traverseAccValidation #-}
+  foldr f x (AccSuccess a) =
+    f a x
+  foldr _ x (AccFailure _) =
+    x
+  {-# INLINE foldr #-}
 
 instance Traversable (AccValidation err) where
-  traverse =
-    traverseAccValidation
-
-bimapAccValidation ::
-  (err -> f)
-  -> (a -> b)
-  -> AccValidation err a
-  -> AccValidation f b
-bimapAccValidation f _ (AccFailure e) =
-  AccFailure (f e)
-bimapAccValidation _ g (AccSuccess a) =
-  AccSuccess (g a)
-{-# INLINE bimapAccValidation #-}
+  traverse f (AccSuccess a) =
+    AccSuccess <$> f a
+  traverse _ (AccFailure e) =
+    pure (AccFailure e)
+  {-# INLINE traverse #-}
 
 instance Bifunctor AccValidation where
-  bimap =
-    bimapAccValidation
+  bimap f _ (AccFailure e) =
+    AccFailure (f e)
+  bimap _ g (AccSuccess a) =
+    AccSuccess (g a)
+  {-# INLINE bimap #-}
 
-bifoldrAccValidation ::
-  (x -> a -> b)
-  -> (y -> a -> b)
-  -> a
-  -> AccValidation x y
-  -> b
-bifoldrAccValidation _ g x (AccSuccess a) =
-  g a x
-bifoldrAccValidation f _ x (AccFailure e) =
-  f e x
-{-# INLINE bifoldrAccValidation #-}
 
 instance Bifoldable AccValidation where
-  bifoldr =
-    bifoldrAccValidation
-
-bitraverseAccValidation ::
-  Functor f =>
-  (x -> f err)
-  -> (y -> f a)
-  -> AccValidation x y
-  -> f (AccValidation err a)
-bitraverseAccValidation _ g (AccSuccess a) =
-  AccSuccess <$> g a
-bitraverseAccValidation f _ (AccFailure e) =
-  AccFailure <$> f e
-{-# INLINE bitraverseAccValidation #-}
+  bifoldr _ g x (AccSuccess a) =
+    g a x
+  bifoldr f _ x (AccFailure e) =
+    f e x
+  {-# INLINE bifoldr #-}
 
 instance Bitraversable AccValidation where
-  bitraverse =
-    bitraverseAccValidation
+  bitraverse _ g (AccSuccess a) =
+    AccSuccess <$> g a
+  bitraverse f _ (AccFailure e) =
+    AccFailure <$> f e
+  {-# INLINE bitraverse #-}
 
-appsAccValidation ::
-  Semigroup err =>
-  AccValidation err a
+appAccValidation ::
+  (err -> err -> err)
   -> AccValidation err a
   -> AccValidation err a
-AccFailure e1 `appsAccValidation` AccFailure e2 =
-  AccFailure (e1 <> e2)
-AccFailure _ `appsAccValidation` AccSuccess a2  =
+  -> AccValidation err a
+appAccValidation m (AccFailure e1) (AccFailure e2) =
+  AccFailure (e1 `m` e2)
+appAccValidation _ (AccFailure _) (AccSuccess a2) =
   AccSuccess a2
-AccSuccess a1  `appsAccValidation` AccFailure _ =
+appAccValidation _ (AccSuccess a1) (AccFailure _) =
   AccSuccess a1
-AccSuccess a1 `appsAccValidation` AccSuccess _ =
+appAccValidation _ (AccSuccess a1) (AccSuccess _) =
   AccSuccess a1
-{-# INLINE appsAccValidation #-}
+{-# INLINE appAccValidation #-}
 
 instance Semigroup e => Semigroup (AccValidation e a) where
   (<>) =
-    appsAccValidation
-
-appmAccValidation ::
-  Monoid err =>
-  AccValidation err a
-  -> AccValidation err a
-  -> AccValidation err a
-AccFailure e1 `appmAccValidation` AccFailure e2 =
-  AccFailure (e1 `mappend` e2)
-AccFailure _ `appmAccValidation` AccSuccess a2  =
-  AccSuccess a2
-AccSuccess a1  `appmAccValidation` AccFailure _ =
-  AccSuccess a1
-AccSuccess a1 `appmAccValidation` AccSuccess _ =
-  AccSuccess a1
-{-# INLINE appmAccValidation #-}
-
-emptyAccValidation ::
-  Monoid err =>
-  AccValidation err a
-emptyAccValidation =
-  AccFailure mempty
-{-# INLINE emptyAccValidation #-}
+    appAccValidation (<>)
+  {-# INLINE (<>) #-}
 
 instance Monoid e => Monoid (AccValidation e a) where
   mappend =
-    appmAccValidation
+    appAccValidation mappend
+  {-# INLINE mappend #-}
   mempty =
-    emptyAccValidation
-
-_EitherV ::
-  Validate f =>
-  Iso (f e a) (f g b) (Either e a) (Either g b)
-_EitherV =
-  iso
-    (\x -> case x ^. _AccValidation of
-             AccFailure e -> Left e
-             AccSuccess a -> Right a)
-    (\x -> _AccValidation # case x of
-                           Left e -> AccFailure e
-                           Right a -> AccSuccess a)
-{-# INLINE _EitherV #-}
-
-swappedAccValidation ::
-  Iso (AccValidation e a) (AccValidation f b) (AccValidation a e) (AccValidation b f)
-swappedAccValidation =
-  iso
-    (\v -> case v of
-             AccFailure e -> AccSuccess e
-             AccSuccess a -> AccFailure a)
-    (\v -> case v of
-             AccFailure a -> AccSuccess a
-             AccSuccess e -> AccFailure e)
-{-# INLINE swappedAccValidation #-}
+    AccFailure mempty
+  {-# INLINE mempty #-}
 
 instance Swapped AccValidation where
   swapped =
-    swappedAccValidation
+    iso
+      (\v -> case v of
+        AccFailure e -> AccSuccess e
+        AccSuccess a -> AccFailure a)
+      (\v -> case v of
+        AccFailure a -> AccSuccess a
+        AccSuccess e -> AccFailure e)
+  {-# INLINE swapped #-}
 
 -- | 'validate's the @a@ with the given predicate, returning @e@ if the predicate does not hold.
 --
@@ -390,39 +291,38 @@ class Validate f where
   _Either ::
     Iso (f e a) (f g b) (Either e a) (Either g b)
   _Either =
-    _EitherV
-
-_AccValidationEitherIso ::
-  Iso (AccValidation e a) (AccValidation g b) (Either e a) (Either g b)
-_AccValidationEitherIso =
-  iso
-    (\x -> case x of
-             AccFailure e -> Left e
-             AccSuccess a -> Right a)
-    (\x -> case x of
-             Left e -> AccFailure e
-             Right a -> AccSuccess a)
-{-# INLINE _AccValidationEitherIso #-}
+    iso
+      (\x -> case x ^. _AccValidation of
+        AccFailure e -> Left e
+        AccSuccess a -> Right a)
+      (\x -> _AccValidation # case x of
+        Left e -> AccFailure e
+        Right a -> AccSuccess a)
+  {-# INLINE _Either #-}
 
 instance Validate AccValidation where
   _AccValidation =
     id
+  {-# INLINE _AccValidation #-}
   _Either =
-    _AccValidationEitherIso
-
-_EitherAccValidationIso ::
-  Iso (Either e a) (Either g b) (AccValidation e a) (AccValidation g b)
-_EitherAccValidationIso =
-  iso
-    fromEither
-    toEither
-{-# INLINE _EitherAccValidationIso #-}
+    iso
+      (\x -> case x of
+        AccFailure e -> Left e
+        AccSuccess a -> Right a)
+      (\x -> case x of
+        Left e -> AccFailure e
+        Right a -> AccSuccess a)
+  {-# INLINE _Either #-}
 
 instance Validate Either where
   _AccValidation =
-    _EitherAccValidationIso
+    iso
+      fromEither
+      toEither
+  {-# INLINE _AccValidation #-}
   _Either =
     id
+  {-# INLINE _Either #-}
 
 -- | This prism generalises 'Control.Lens.Prism._Left'. It targets the failure case of either 'Either' or 'AccValidation'.
 _Failure ::
