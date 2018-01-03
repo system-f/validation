@@ -1,3 +1,7 @@
+0.6.2
+
+* Add `bindValidation` and `validationed`
+
 0.6.1
 
 * Add validate, validationnel, fromEither, liftError, validation, toEither, orElse, valueOr, ensure, codiagonal, revalidate
