@@ -1,5 +1,5 @@
 name:               validation
-version:            0.6.2
+version:            0.6.3
 license:            BSD3
 license-file:       LICENCE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
@@ -71,7 +71,7 @@ test-suite hedgehog
                     exitcode-stdio-1.0
 
   main-is:
-                    hedgehog.hs
+                    hedgehog_tests.hs
 
   default-language:
                     Haskell2010
@@ -94,7 +94,7 @@ test-suite hunit
                     exitcode-stdio-1.0
 
   main-is:
-                    hunit.hs
+                    hunit_tests.hs
 
   default-language:
                     Haskell2010
