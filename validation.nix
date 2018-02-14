@@ -3,7 +3,7 @@
 }:
 mkDerivation {
   pname = "validation";
-  version = "0.6.0";
+  version = "0.6.3";
   src = ./.;
   libraryHaskellDepends = [
     base bifunctors lens mtl semigroupoids semigroups transformers
