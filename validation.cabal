@@ -41,9 +41,6 @@ source-repository   head
   type:             git
   location:         git@github.com:qfpl/validation.git
 
-flag                small_base
-  description:      Choose the new, split-up base package.
-
 library
   default-language:
                     Haskell2010
