@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -36,6 +37,7 @@ module Data.Validation
 ) where
 
 import Control.Applicative(Applicative((<*>), pure), (<$>))
+import Control.DeepSeq (NFData (rnf))
 import Control.Lens (over, under)
 import Control.Lens.Getter((^.))
 import Control.Lens.Iso(Swapped(..), Iso, iso, from)
@@ -59,6 +61,7 @@ import Data.Ord(Ord)
 import Data.Semigroup(Semigroup((<>)))
 import Data.Traversable(Traversable(traverse))
 import Data.Typeable(Typeable)
+import GHC.Generics (Generic)
 import Prelude(Show)
 
 
@@ -75,7 +78,7 @@ import Prelude(Show)
 data AccValidation err a =
   AccFailure err
   | AccSuccess a
-  deriving (Eq, Ord, Show, Data, Typeable)
+  deriving (Eq, Ord, Show, Data, Typeable, Generic)
 
 instance Functor (AccValidation err) where
   fmap _ (AccFailure e) =
@@ -182,6 +185,12 @@ instance Swapped AccValidation where
         AccFailure a -> AccSuccess a
         AccSuccess e -> AccFailure e)
   {-# INLINE swapped #-}
+
+instance (NFData e, NFData a) => NFData (AccValidation e a) where
+  rnf v =
+    case v of
+      AccFailure e -> rnf e
+      AccSuccess a -> rnf a
 
 -- | 'validate's the @a@ with the given predicate, returning @e@ if the predicate does not hold.
 --

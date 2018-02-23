@@ -47,6 +47,7 @@ library
 
   build-depends:
                       base          >= 3   && < 5
+                    , deepseq       >= 1.2 && < 1.5
                     , mtl           >= 2.0 && < 2.3
                     , semigroups    >= 0.8 && < 1
                     , semigroupoids >= 5   && < 6
