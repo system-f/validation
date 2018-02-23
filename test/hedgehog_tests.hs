@@ -3,7 +3,6 @@
 import Control.Applicative (liftA3)
 import Control.Monad (join, unless)
 import Data.Semigroup ((<>))
-import Data.Monoid (Monoid (mappend))
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
