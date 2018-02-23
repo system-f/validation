@@ -1,3 +1,8 @@
+0.6.3
+
+* Add `Generic` and `NFData` instances
+* Make AccValidation Apply and Applicative lazier
+
 0.6.2
 
 * Add `bindValidation` and `validationed`
