@@ -1,12 +1,12 @@
-{ mkDerivation, base, bifunctors, hedgehog, HUnit, lens, mtl
-, semigroupoids, semigroups, stdenv, transformers
+{ mkDerivation, base, bifunctors, hedgehog, HUnit, lens
+, semigroupoids, semigroups, stdenv
 }:
 mkDerivation {
   pname = "validation";
   version = "0.6.3";
   src = ./.;
   libraryHaskellDepends = [
-    base bifunctors lens mtl semigroupoids semigroups transformers
+    base bifunctors lens semigroupoids semigroups
   ];
   testHaskellDepends = [ base hedgehog HUnit lens semigroups ];
   homepage = "https://github.com/qfpl/validation";
