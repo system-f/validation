@@ -46,7 +46,7 @@ library
                     Haskell2010
 
   build-depends:
-                      base          >= 3   && < 5
+                      base          >= 4.5 && < 5
                     , deepseq       >= 1.2 && < 1.5
                     , semigroups    >= 0.8 && < 1
                     , semigroupoids >= 5   && < 6
