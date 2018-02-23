@@ -1,7 +1,11 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TypeFamilies #-}
+
+#if __GLASGOW_HASKELL__ >= 702
+{-# LANGUAGE DeriveGeneric #-}
+#endif
 
 -- | A data type similar to @Data.Either@ that accumulates failures.
 module Data.Validation
@@ -61,7 +65,9 @@ import Data.Ord(Ord)
 import Data.Semigroup(Semigroup((<>)))
 import Data.Traversable(Traversable(traverse))
 import Data.Typeable(Typeable)
+#if __GLASGOW_HASKELL__ >= 702
 import GHC.Generics (Generic)
+#endif
 import Prelude(Show)
 
 
@@ -78,7 +84,12 @@ import Prelude(Show)
 data AccValidation err a =
   AccFailure err
   | AccSuccess a
-  deriving (Eq, Ord, Show, Data, Typeable, Generic)
+  deriving (
+    Eq, Ord, Show, Data, Typeable
+#if __GLASGOW_HASKELL__ >= 702
+    , Generic
+#endif
+  )
 
 instance Functor (AccValidation err) where
   fmap _ (AccFailure e) =
