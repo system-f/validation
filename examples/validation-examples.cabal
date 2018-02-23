@@ -1,26 +1,24 @@
 name:               validation-examples
-version:            0.5.0
+version:            0.6.3
 license:            BSD3
-license-file:       LICENSE
+license-file:       LICENCE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
 maintainer:         Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
 copyright:          Copyright (C) 2010-2013 Tony Morris, Nick Partridge
-copyright:          Copyright (C) 2014,2015 NICTA Limited
-copyright:          Copyright (c) 2016,2017, Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230.
+                    Copyright (C) 2014,2015 NICTA Limited
+                    Copyright (c) 2016,2017, Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230.
 synopsis:           Examples for the Validation package
 category:           Data
-description:        Examples for the validation package
+description:        Examples for the validation package.
 homepage:           https://github.com/qfpl/validation
 bug-reports:        https://github.com/qfpl/validation/issues
 cabal-version:      >= 1.10
 build-type:         Simple
+tested-with:        GHC==8.4.1, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
 
 source-repository   head
   type:             git
   location:         git@github.com:qfpl/validation.git
-
-flag                small_base
-  description:      Choose the new, split-up base package.
 
 executable validation-examples
   main-is:
@@ -30,10 +28,10 @@ executable validation-examples
                     Haskell2010
 
   build-depends:
-                      base          >= 3     && < 5
-                    , validation    >= 0.5.0
-                    , lens          >= 4.0 && < 5
-                    , bifunctors    >= 3.0
+                      base          >= 4.5 && < 5
+                    , validation    >= 0.6 && < 0.7
+                    , lens          >= 4   && < 5
+                    , bifunctors    >= 3   && < 6
 
   ghc-options:
                     -Wall
