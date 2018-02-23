@@ -99,10 +99,9 @@ instance Functor (AccValidation err) where
   {-# INLINE fmap #-}
 
 instance Semigroup err => Apply (AccValidation err) where
-  AccFailure e1 <.> AccFailure e2 =
-    AccFailure (e1 <> e2)
-  AccFailure e1 <.> AccSuccess _  =
-    AccFailure e1
+  AccFailure e1 <.> b = AccFailure $ case b of
+    AccFailure e2 -> e1 <> e2
+    AccSuccess _ -> e1
   AccSuccess _  <.> AccFailure e2 =
     AccFailure e2
   AccSuccess f  <.> AccSuccess a  =
