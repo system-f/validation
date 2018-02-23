@@ -90,7 +90,7 @@ testValidateTrue =
 
 testValidateFalse :: Test
 testValidateFalse =
-  let subject = validate three (const True) seven
+  let subject = validate three (const False) seven
       expected = AccFailure three
   in  TestCase (assertEqual "testValidateFalse" subject expected)
 
