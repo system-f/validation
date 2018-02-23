@@ -6,10 +6,12 @@ import Test.HUnit
 
 import Prelude hiding (length)
 import Control.Lens ((#))
+import Control.Monad (when)
 import Data.Foldable (length)
 import Data.Proxy (Proxy (Proxy))
 import Data.Validation (AccValidation (AccSuccess, AccFailure), Validate, _Failure, _Success, ensure,
                         orElse, validate, validation, validationNel)
+import System.Exit (exitFailure)
 
 seven :: Int
 seven = 7
@@ -122,6 +124,8 @@ tests =
   ] ++ eithers ++ validations
   where
 
-main :: IO Counts
-main = runTestTT tests
+main :: IO ()
+main = do
+  c <- runTestTT tests
+  when (errors c > 0 || failures c > 0) exitFailure
 
