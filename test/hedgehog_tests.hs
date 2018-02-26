@@ -9,7 +9,7 @@ import qualified Hedgehog.Range as Range
 import System.IO (BufferMode(..), hSetBuffering, stdout, stderr)
 import System.Exit (exitFailure)
 
-import Data.Validation (AccValidation (AccSuccess, AccFailure))
+import Data.Validation (Validation (Success, Failure))
 
 main :: IO ()
 main = do
@@ -26,17 +26,17 @@ main = do
   unless result $
     exitFailure
 
-genAccValidation :: Gen e -> Gen a -> Gen (AccValidation e a)
-genAccValidation e a = Gen.choice [fmap AccFailure e, fmap AccSuccess a]
+genValidation :: Gen e -> Gen a -> Gen (Validation e a)
+genValidation e a = Gen.choice [fmap Failure e, fmap Success a]
 
-testGen :: Gen (AccValidation [String] Int)
+testGen :: Gen (Validation [String] Int)
 testGen =
   let range = Range.linear 1 50
       string = Gen.string range Gen.unicode
       strings = Gen.list range string
-  in  genAccValidation strings Gen.enumBounded
+  in  genValidation strings Gen.enumBounded
 
-mkAssoc :: (AccValidation [String] Int -> AccValidation [String] Int -> AccValidation [String] Int) -> Property
+mkAssoc :: (Validation [String] Int -> Validation [String] Int -> Validation [String] Int) -> Property
 mkAssoc f =
   let g = forAll testGen
       assoc = \x y z -> ((x `f` y) `f` z) === (x `f` (y `f` z))

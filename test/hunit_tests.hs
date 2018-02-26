@@ -9,7 +9,7 @@ import Control.Lens ((#))
 import Control.Monad (when)
 import Data.Foldable (length)
 import Data.Proxy (Proxy (Proxy))
-import Data.Validation (AccValidation (AccSuccess, AccFailure), Validate, _Failure, _Success, ensure,
+import Data.Validation (Validation (Success, Failure), Validate, _Failure, _Success, ensure,
                         orElse, validate, validation, validationNel)
 import System.Exit (exitFailure)
 
@@ -21,26 +21,26 @@ three = 3
 
 testYY :: Test
 testYY =
-  let subject  = _Success # (+1) <*> _Success # seven :: AccValidation String Int
-      expected = AccSuccess 8
+  let subject  = _Success # (+1) <*> _Success # seven :: Validation String Int
+      expected = Success 8
   in  TestCase (assertEqual "Success <*> Success" subject expected)
 
 testNY :: Test
 testNY =
-  let subject  = _Failure # ["f1"] <*> _Success # seven :: AccValidation [String] Int
-      expected = AccFailure ["f1"]
+  let subject  = _Failure # ["f1"] <*> _Success # seven :: Validation [String] Int
+      expected = Failure ["f1"]
   in  TestCase (assertEqual "Failure <*> Success" subject expected)
 
 testYN :: Test
 testYN =
-  let subject  = _Success # (+1) <*> _Failure # ["f2"] :: AccValidation [String] Int
-      expected = AccFailure ["f2"]
+  let subject  = _Success # (+1) <*> _Failure # ["f2"] :: Validation [String] Int
+      expected = Failure ["f2"]
   in  TestCase (assertEqual "Success <*> Failure" subject expected)
 
 testNN :: Test
 testNN =
-  let subject  = _Failure # ["f1"] <*> _Failure # ["f2"] :: AccValidation [String] Int
-      expected = AccFailure ["f1","f2"]
+  let subject  = _Failure # ["f1"] <*> _Failure # ["f2"] :: Validation [String] Int
+      expected = Failure ["f1","f2"]
   in  TestCase (assertEqual "Failure <*> Failure" subject expected)
 
 testValidationNel :: Test
@@ -87,20 +87,20 @@ testOrElseLeft _ =
 testValidateTrue :: Test
 testValidateTrue =
   let subject = validate three (const True) seven
-      expected = AccSuccess seven
+      expected = Success seven
   in  TestCase (assertEqual "testValidateTrue" subject expected)
 
 testValidateFalse :: Test
 testValidateFalse =
   let subject = validate three (const False) seven
-      expected = AccFailure three
+      expected = Failure three
   in  TestCase (assertEqual "testValidateFalse" subject expected)
 
 tests :: Test
 tests =
   let eitherP :: Proxy Either
       eitherP = Proxy
-      validationP :: Proxy AccValidation
+      validationP :: Proxy Validation
       validationP = Proxy
       generals :: forall v. (Validate v, Eq (v Int Int), Show (v Int Int)) => [Proxy v -> Test]
       generals =

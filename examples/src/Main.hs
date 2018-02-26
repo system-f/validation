@@ -5,7 +5,7 @@ import Control.Lens.Iso(from)
 import Control.Lens.Review(( # ))
 import Data.Bifoldable(bitraverse_, bimapM_)
 import Data.Bifunctor(second, first)
-import Data.Validation(AccValidation, _AccValidation, _Either, _Success, _Failure)
+import Data.Validation(Validation, _Validation, _Either, _Success, _Failure)
 
 main ::
   IO ()
@@ -16,9 +16,9 @@ main =
 --
 -- Use the _Success and _Failure prisms
 
-successAcc ::
-  AccValidation e String
-successAcc =
+successVal ::
+  Validation e String
+successVal =
   _Success # "A"
 
 successEither ::
@@ -26,9 +26,9 @@ successEither ::
 successEither =
   _Success # "A"
 
-failureAcc ::
-  AccValidation Int a
-failureAcc =
+failureVal ::
+  Validation Int a
+failureVal =
   _Failure # 5
 
 -- | Mapping
@@ -39,10 +39,10 @@ exMapping ::
   ()
 exMapping =
   let -- fmap/second are equivalent, and map successes
-      _ = fmap (++ " B" ) successAcc
-      _ = second (++ " B") successAcc
-      _ = first (+1) failureAcc
-      _ = first (+(1 :: Integer)) successAcc -- does nothing
+      _ = fmap (++ " B" ) successVal
+      _ = second (++ " B") successVal
+      _ = first (+1) failureVal
+      _ = first (+(1 :: Integer)) successVal -- does nothing
    in ()
 
 -- | Folding
@@ -56,9 +56,9 @@ exFolding ::
   IO ()
 exFolding =
   do
-      bitraverse_ onFailure onSuccess successAcc
+      bitraverse_ onFailure onSuccess successVal
       -- OR
-      bimapM_ onFailure onSuccess successAcc
+      bimapM_ onFailure onSuccess successVal
         where onFailure _ = putStrLn "Some failure"
               onSuccess v = putStrLn $ "Good " ++ v
 
@@ -70,5 +70,5 @@ exConvert ::
   IO ()
 exConvert =
   do
-      print (successAcc ^. from _AccValidation :: Either Int String)
-      print (successEither ^. from _Either :: AccValidation Int String)
+      print (successVal ^. from _Validation :: Either Int String)
+      print (successEither ^. from _Either :: Validation Int String)
