@@ -22,25 +22,25 @@ data VError = MustNotBeEmpty
 
 -- ***** Base smart constructors *****
 -- String must contain an '@' character
-atString :: String -> AccValidation [VError] AtString
+atString :: String -> Validation [VError] AtString
 atString x = if "@" `isInfixOf` x
              then _Success # AtString x
              else _Failure # [MustContainAt]
 
 -- String must contain an '.' character
-periodString :: String -> AccValidation [VError] PeriodString
+periodString :: String -> Validation [VError] PeriodString
 periodString x = if "." `isInfixOf` x
                  then _Success # PeriodString x
                  else _Failure # [MustContainPeriod]
 
 -- String must not be empty
-nonEmptyString :: String -> AccValidation [VError] NonEmptyString
+nonEmptyString :: String -> Validation [VError] NonEmptyString
 nonEmptyString x = if x /= []
                    then _Success # NonEmptyString x
                    else _Failure # [MustNotBeEmpty]
 
 -- ***** Combining smart constructors *****
-email :: String -> AccValidation [VError] Email
+email :: String -> Validation [VError] Email
 email x = pure (Email x)   <*
           nonEmptyString x <*
           atString       x <*
@@ -48,16 +48,16 @@ email x = pure (Email x)   <*
 
 -- ***** Example usage *****
 success = email "bob@gmail.com"
--- AccSuccess (Email "bob@gmail.com")
+-- Success (Email "bob@gmail.com")
 
 failureAt = email "bobgmail.com"
--- AccFailure [MustContainAt]
+-- Failure [MustContainAt]
 
 failurePeriod = email "bob@gmailcom"
--- AccFailure [MustContainPeriod]
+-- Failure [MustContainPeriod]
 
 failureAll = email ""
--- AccFailure [MustNotBeEmpty,MustContainAt,MustContainPeriod]
+-- Failure [MustNotBeEmpty,MustContainAt,MustContainPeriod]
 
 main :: IO ()
 main = do

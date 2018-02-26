@@ -1,3 +1,7 @@
+1
+
+* Rename `AccValidation` to `Validation`
+
 0.6.3
 
 * Add `Generic` and `NFData` instances
