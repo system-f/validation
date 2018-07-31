@@ -3,7 +3,7 @@
 }:
 mkDerivation {
   pname = "validation";
-  version = "0.6.3";
+  version = "1";
   src = ./.;
   libraryHaskellDepends = [
     base bifunctors deepseq lens semigroupoids semigroups
