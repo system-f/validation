@@ -114,6 +114,7 @@ instance Semigroup err => Applicative (Validation err) where
   (<*>) =
     (<.>)
 
+-- | For two errors, this instance reports only the last of them.
 instance Alt (Validation err) where
   Failure _ <!> x =
     x
