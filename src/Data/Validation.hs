@@ -50,7 +50,6 @@ import Control.Lens.Review(( # ))
 import Data.Bifoldable(Bifoldable(bifoldr))
 import Data.Bifunctor(Bifunctor(bimap))
 import Data.Bitraversable(Bitraversable(bitraverse))
-import Data.Bool (Bool)
 import Data.Data(Data)
 import Data.Either(Either(Left, Right), either)
 import Data.Eq(Eq)
@@ -68,7 +67,7 @@ import Data.Typeable(Typeable)
 #if __GLASGOW_HASKELL__ >= 702
 import GHC.Generics (Generic)
 #endif
-import Prelude(Show)
+import Prelude(Show, Maybe(..))
 
 
 -- | An @Validation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
@@ -203,16 +202,18 @@ instance (NFData e, NFData a) => NFData (Validation e a) where
       Failure e -> rnf e
       Success a -> rnf a
 
--- | 'validate's the @a@ with the given predicate, returning @e@ if the predicate does not hold.
+-- | 'validate's an @a@ producing an updated optional value, returning
+-- @e@ in the empty case.
 --
 -- This can be thought of as having the less general type:
 --
 -- @
--- validate :: e -> (a -> Bool) -> a -> Validation e a
+-- validate :: e -> (a -> Maybe b) -> a -> Validation e b
 -- @
-validate :: Validate v => e -> (a -> Bool) -> a -> v e a
-validate e p a =
-  if p a then _Success # a else _Failure # e
+validate :: Validate v => e -> (a -> Maybe b) -> a -> v e b
+validate e p a = case p a of
+  Nothing -> _Failure # e
+  Just b  -> _Success # b
 
 -- | 'validationNel' is 'liftError' specialised to 'NonEmpty' lists, since
 -- they are a common semigroup to use.
@@ -266,15 +267,16 @@ valueOr ea v = case v ^. _Validation of
 codiagonal :: Validation a a -> a
 codiagonal = valueOr id
 
--- | 'ensure' leaves the validation unchanged when the predicate holds, or
--- fails with @e@ otherwise.
+-- | 'ensure' ensures that a validation remains unchanged upon failure,
+-- updating a successful validation with an optional value that could fail
+-- with @e@ otherwise.
 --
 -- This can be thought of as having the less general type:
 --
 -- @
--- ensure :: e -> (a -> Bool) -> Validation e a -> Validation e a
+-- ensure :: e -> (a -> Maybe b) -> Validation e a -> Validation e b
 -- @
-ensure :: Validate v => e -> (a -> Bool) -> v e a -> v e a
+ensure :: Validate v => e -> (a -> Maybe b) -> v e a -> v e b
 ensure e p =
   over _Validation $ \v -> case v of
     Failure x -> Failure x
@@ -371,4 +373,3 @@ _Success =
 -- | 'revalidate' converts between any two instances of 'Validate'.
 revalidate :: (Validate f, Validate g) => Iso (f e1 s) (f e2 t) (g e1 s) (g e2 t)
 revalidate = _Validation . from _Validation
-

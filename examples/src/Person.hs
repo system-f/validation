@@ -1,6 +1,5 @@
 module Person where
 
-import Control.Applicative
 import Control.Lens
 import Data.List (isInfixOf)
 import Data.Validation
@@ -45,7 +44,7 @@ mkPerson pName pEmail pAge =
   <*> (mkAge pAge)
 
 -- Examples
--- Data constructors for `Name`, `Age`, `Email`, and `Person` should not be 
+-- Data constructors for `Name`, `Age`, `Email`, and `Person` should not be
 -- exported to the example code below:
 
 validPerson :: Validation [Error] Person
