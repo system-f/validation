@@ -48,28 +48,28 @@ testValidationNel =
   let subject  = validation length (const 0) $ validationNel (Left ())
   in  TestCase (assertEqual "validationNel makes lists of length 1" subject 1)
 
-testEnsureLeftFalse, testEnsureLeftTrue, testEnsureRightFalse, testEnsureRightTrue,
+testEnsureLeftNothing, testEnsureLeftJust, testEnsureRightNothing, testEnsureRightJust,
   testOrElseRight, testOrElseLeft
   :: forall v. (Validate v, Eq (v Int Int), Show (v Int Int)) => Proxy v -> Test
 
-testEnsureLeftFalse _ =
+testEnsureLeftNothing _ =
   let subject :: v Int Int
-      subject = ensure three (const False) (_Failure # seven)
+      subject = ensure three (const Nothing) (_Failure # seven)
   in  TestCase (assertEqual "ensure Left False" subject (_Failure # seven))
 
-testEnsureLeftTrue _ =
+testEnsureLeftJust _ =
   let subject :: v Int Int
-      subject = ensure three (const True) (_Failure # seven)
+      subject = ensure three (Just . id) (_Failure # seven)
   in  TestCase (assertEqual "ensure Left True" subject (_Failure # seven))
 
-testEnsureRightFalse _ =
+testEnsureRightNothing _ =
   let subject :: v Int Int
-      subject = ensure three (const False) (_Success # seven)
+      subject = ensure three (const Nothing) (_Success # seven)
   in  TestCase (assertEqual "ensure Right False" subject (_Failure # three))
 
-testEnsureRightTrue _ =
+testEnsureRightJust _ =
   let subject :: v Int Int
-      subject = ensure three (const True ) (_Success # seven)
+      subject = ensure three (Just . id) (_Success # seven)
   in  TestCase (assertEqual "ensure Right True" subject (_Success # seven))
 
 testOrElseRight _ =
@@ -84,16 +84,17 @@ testOrElseLeft _ =
       subject = v `orElse` three
   in  TestCase (assertEqual "orElseLeft" subject three)
 
-testValidateTrue :: Test
-testValidateTrue =
-  let subject = validate three (const True) seven
+testValidateJust :: Test
+testValidateJust =
+  let subject = validate three (Just . id) seven
       expected = Success seven
   in  TestCase (assertEqual "testValidateTrue" subject expected)
 
-testValidateFalse :: Test
-testValidateFalse =
-  let subject = validate three (const False) seven
+testValidateNothing :: Test
+testValidateNothing =
+  let subject = validate three (const option) seven
       expected = Failure three
+      option = Nothing :: Maybe Int
   in  TestCase (assertEqual "testValidateFalse" subject expected)
 
 tests :: Test
@@ -104,10 +105,10 @@ tests =
       validationP = Proxy
       generals :: forall v. (Validate v, Eq (v Int Int), Show (v Int Int)) => [Proxy v -> Test]
       generals =
-        [ testEnsureLeftFalse
-        , testEnsureLeftTrue
-        , testEnsureRightFalse
-        , testEnsureRightTrue
+        [ testEnsureLeftNothing
+        , testEnsureLeftJust
+        , testEnsureRightNothing
+        , testEnsureRightJust
         , testOrElseLeft
         , testOrElseRight
         ]
@@ -119,8 +120,8 @@ tests =
   , testNY
   , testNN
   , testValidationNel
-  , testValidateFalse
-  , testValidateTrue
+  , testValidateNothing
+  , testValidateJust
   ] ++ eithers ++ validations
   where
 
@@ -128,4 +129,3 @@ main :: IO ()
 main = do
   c <- runTestTT tests
   when (errors c > 0 || failures c > 0) exitFailure
-
