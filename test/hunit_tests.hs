@@ -19,6 +19,9 @@ seven = 7
 three :: Int
 three = 3
 
+four :: Int
+four = 4
+
 testYY :: Test
 testYY =
   let subject  = _Success # (+1) <*> _Success # seven :: Validation String Int
@@ -48,8 +51,8 @@ testValidationNel =
   let subject  = validation length (const 0) $ validationNel (Left ())
   in  TestCase (assertEqual "validationNel makes lists of length 1" subject 1)
 
-testEnsureLeftNothing, testEnsureLeftJust, testEnsureRightNothing, testEnsureRightJust,
-  testOrElseRight, testOrElseLeft
+testEnsureLeftNothing, testEnsureLeftJust, testEnsureRightNothing,
+ testEnsureRightJust, testEnsureRightJust', testOrElseRight, testOrElseLeft
   :: forall v. (Validate v, Eq (v Int Int), Show (v Int Int)) => Proxy v -> Test
 
 testEnsureLeftNothing _ =
@@ -72,6 +75,11 @@ testEnsureRightJust _ =
       subject = ensure three (Just . id) (_Success # seven)
   in  TestCase (assertEqual "ensure Right True" subject (_Success # seven))
 
+testEnsureRightJust' _ =
+  let subject :: v Int Int
+      subject = ensure three (const $ Just four) (_Success # seven)
+  in  TestCase (assertEqual "ensure Right True" subject (_Success # four))
+
 testOrElseRight _ =
   let v :: v Int Int
       v = _Success # seven
@@ -88,6 +96,12 @@ testValidateJust :: Test
 testValidateJust =
   let subject = validate three (Just . id) seven
       expected = Success seven
+  in  TestCase (assertEqual "testValidateTrue" subject expected)
+
+testValidateJust' :: Test
+testValidateJust' =
+  let subject = validate three (const $ Just four) seven
+      expected = Success four
   in  TestCase (assertEqual "testValidateTrue" subject expected)
 
 testValidateNothing :: Test
@@ -109,6 +123,7 @@ tests =
         , testEnsureLeftJust
         , testEnsureRightNothing
         , testEnsureRightJust
+        , testEnsureRightJust' 
         , testOrElseLeft
         , testOrElseRight
         ]
@@ -122,6 +137,7 @@ tests =
   , testValidationNel
   , testValidateNothing
   , testValidateJust
+  , testValidateJust'
   ] ++ eithers ++ validations
   where
 
