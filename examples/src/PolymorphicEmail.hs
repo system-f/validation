@@ -9,7 +9,6 @@
 
 import Prelude
 
-import Control.Applicative
 import Control.Lens
 import Data.List (isInfixOf)
 import Data.Validation

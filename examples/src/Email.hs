@@ -3,7 +3,6 @@
 
 -- Thanks to @purefn for the help on this!
 
-import Control.Applicative
 import Control.Lens
 import Data.List (isInfixOf)
 import Data.Validation
