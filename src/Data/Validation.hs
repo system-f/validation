@@ -40,7 +40,7 @@ module Data.Validation
 , revalidate
 ) where
 
-import Control.Applicative(Applicative((<*>), pure), (<$>))
+import Control.Applicative(Alternative((<|>)), Applicative((<*>), pure), (<$>))
 import Control.DeepSeq (NFData (rnf))
 import Control.Lens (over, under)
 import Control.Lens.Getter((^.))
@@ -52,22 +52,24 @@ import Data.Bifunctor(Bifunctor(bimap))
 import Data.Bitraversable(Bitraversable(bitraverse))
 import Data.Data(Data)
 import Data.Either(Either(Left, Right), either)
-import Data.Eq(Eq)
+import Data.Eq(Eq((==)))
 import Data.Foldable(Foldable(foldr))
 import Data.Function((.), ($), id)
 import Data.Functor(Functor(fmap))
 import Data.Functor.Alt(Alt((<!>)))
 import Data.Functor.Apply(Apply((<.>)))
+import Data.Functor.Classes(Eq1 (..), Eq2(..), Ord1 (..), Ord2(..), Show1 (..), Show2(..), Read1(..), Read2(..), showsUnaryWith, readData, readUnaryWith)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid(Monoid(mappend, mempty))
-import Data.Ord(Ord)
+import Data.Ord(Ord(compare), Ordering(GT,LT))
 import Data.Semigroup(Semigroup((<>)))
 import Data.Traversable(Traversable(traverse))
 import Data.Typeable(Typeable)
 #if __GLASGOW_HASKELL__ >= 702
 import GHC.Generics (Generic)
 #endif
-import Prelude(Show, Maybe(..))
+import GHC.Read(Read(..))
+import Prelude(Bool(False), Show(..), Maybe(..))
 
 
 -- | An @Validation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
@@ -84,7 +86,7 @@ data Validation err a =
   Failure err
   | Success a
   deriving (
-    Eq, Ord, Show, Data, Typeable
+    Eq, Ord, Show, Read, Data, Typeable
 #if __GLASGOW_HASKELL__ >= 702
     , Generic
 #endif
@@ -184,6 +186,38 @@ instance Monoid e => Monoid (Validation e a) where
   mempty =
     Failure mempty
   {-# INLINE mempty #-}
+
+instance Eq e => Eq1 (Validation e) where
+  liftEq = liftEq2 (==)
+
+instance Eq2 Validation where
+  liftEq2 e _ (Failure x) (Failure y) = e x y 
+  liftEq2 _ e (Success x) (Success y) = e x y
+  liftEq2 _ _ _ _ = False
+
+instance Ord e => Ord1 (Validation e) where
+  liftCompare = liftCompare2 compare
+  
+instance Ord2 Validation where
+  liftCompare2 c _ (Failure x) (Failure y) = c x y
+  liftCompare2 _ _ (Failure _) (Success _) = LT
+  liftCompare2 _ _ (Success _) (Failure _) = GT
+  liftCompare2 _ c (Success x) (Success y) = c x y
+
+instance Show e => Show1 (Validation e) where
+  liftShowsPrec = liftShowsPrec2 showsPrec showList
+
+instance Show2 Validation where
+  liftShowsPrec2 sp1 _ _ _ d (Failure x) = showsUnaryWith sp1 "Failure" d x
+  liftShowsPrec2 _ _ sp2 _ d (Success x) = showsUnaryWith sp2 "Success" d x
+
+instance Read e => Read1 (Validation e) where
+  liftReadPrec = liftReadPrec2 readPrec readListPrec
+
+instance Read2 Validation where
+  liftReadPrec2 rp1 _ rp2 _ = readData $
+    readUnaryWith rp1 "Failure" Failure <|>
+    readUnaryWith rp2 "Success" Success
 
 instance Swapped Validation where
   swapped =
