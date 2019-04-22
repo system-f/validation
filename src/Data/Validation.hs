@@ -40,7 +40,13 @@ module Data.Validation
 , revalidate
 ) where
 
-import Control.Applicative(Alternative((<|>)), Applicative((<*>), pure), (<$>))
+import Control.Applicative(Applicative((<*>), pure), (<$>),
+#if __GLASGOW_HASKELL__ >= 821
+  Alternative((<|>))
+#else
+--  Alternative()
+#endif
+  )
 import Control.DeepSeq (NFData (rnf))
 import Control.Lens (over, under)
 import Control.Lens.Getter((^.))
@@ -52,16 +58,32 @@ import Data.Bifunctor(Bifunctor(bimap))
 import Data.Bitraversable(Bitraversable(bitraverse))
 import Data.Data(Data)
 import Data.Either(Either(Left, Right), either)
+#if __GLASGOW_HASKELL__ >= 801
 import Data.Eq(Eq((==)))
+#else
+import Data.Eq(Eq)
+#endif
 import Data.Foldable(Foldable(foldr))
 import Data.Function((.), ($), id)
 import Data.Functor(Functor(fmap))
 import Data.Functor.Alt(Alt((<!>)))
 import Data.Functor.Apply(Apply((<.>)))
-import Data.Functor.Classes(Eq1 (..), Eq2(..), Ord1 (..), Ord2(..), Show1 (..), Show2(..), Read1(..), Read2(..), showsUnaryWith, readData, readUnaryWith)
+#if __GLASGOW_HASKELL__ >= 801
+import Data.Functor.Classes(Eq1 (..), Eq2(..), Ord1 (..), Ord2(..), Show1 (..), Show2(..), Read1(..), Read2(..), showsUnaryWith
+#if __GLASGOW_HASKELL__ >= 821
+  , readData, readUnaryWith
+#else
+  , readsData, readsUnaryWith
+#endif
+  )
+#endif
 import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid(Monoid(mappend, mempty))
+#if __GLASGOW_HASKELL__ >= 801
 import Data.Ord(Ord(compare), Ordering(GT,LT))
+#else
+import Data.Ord(Ord)
+#endif
 import Data.Semigroup(Semigroup((<>)))
 import Data.Traversable(Traversable(traverse))
 import Data.Typeable(Typeable)
@@ -69,8 +91,11 @@ import Data.Typeable(Typeable)
 import GHC.Generics (Generic)
 #endif
 import GHC.Read(Read(..))
-import Prelude(Bool(False), Show(..), Maybe(..))
-
+import Prelude(Show(..), Maybe(..)
+#if __GLASGOW_HASKELL__ >= 801
+  , Bool(False)
+#endif
+  )
 
 -- | An @Validation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
 -- the 'Applicative' instance for @Validation@ /accumulates/ errors using a 'Semigroup' on @err@.
@@ -187,6 +212,7 @@ instance Monoid e => Monoid (Validation e a) where
     Failure mempty
   {-# INLINE mempty #-}
 
+#if __GLASGOW_HASKELL__ >= 801
 instance Eq e => Eq1 (Validation e) where
   liftEq = liftEq2 (==)
 
@@ -215,9 +241,18 @@ instance Read e => Read1 (Validation e) where
   liftReadPrec = liftReadPrec2 readPrec readListPrec
 
 instance Read2 Validation where
+
+#if __GLASGOW_HASKELL__ >= 821
   liftReadPrec2 rp1 _ rp2 _ = readData $
     readUnaryWith rp1 "Failure" Failure <|>
     readUnaryWith rp2 "Success" Success
+#else
+  liftReadsPrec2 rp1 _ rp2 _ = readsData $
+    readsUnaryWith rp1 "Failure" Failure `mappend`
+    readsUnaryWith rp2 "Success" Success
+
+#endif
+#endif
 
 instance Swapped Validation where
   swapped =
