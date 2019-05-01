@@ -1,12 +1,12 @@
 name:               validation
-version:            1
+version:            1.1
 license:            BSD3
 license-file:       LICENCE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
 maintainer:         Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>, Queensland Functional Programming Lab <oᴉ˙ldɟb@llǝʞsɐɥ>
 copyright:          Copyright (C) 2010-2013 Tony Morris, Nick Partridge
                     Copyright (C) 2014,2015 NICTA Limited
-                    Copyright (c) 2016,2017, Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230.
+                    Copyright (c) 2016-2019, Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230.
 synopsis:           A data-type like Either but with an accumulating Applicative
 category:           Data
 description:

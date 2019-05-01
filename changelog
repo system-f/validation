@@ -1,3 +1,7 @@
+1.1
+
+* Generalise types of `validate` and `ensure` functions to use `Maybe` instead of `Bool`
+
 1
 
 * Rename `AccValidation` to `Validation`
