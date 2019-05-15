@@ -76,7 +76,7 @@ test-suite hedgehog
 
   build-depends:
                       base       >= 3   && < 5
-                    , hedgehog   >= 0.5 && < 0.7
+                    , hedgehog   >= 0.5 && < 1.1
                     , semigroups >= 0.8 && < 1
                     , validation
 
