@@ -164,10 +164,10 @@ appValidation ::
   -> Validation err a
 appValidation m (Failure e1) (Failure e2) =
   Failure (e1 `m` e2)
-appValidation _ (Failure _) (Success a2) =
-  Success a2
-appValidation _ (Success a1) (Failure _) =
-  Success a1
+appValidation _ (Failure e1) (Success _) =
+  Failure e1
+appValidation _ (Success _) (Failure e2) =
+  Failure e2
 appValidation _ (Success a1) (Success _) =
   Success a1
 {-# INLINE appValidation #-}
