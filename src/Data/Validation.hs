@@ -59,7 +59,6 @@ import Data.Functor(Functor(fmap))
 import Data.Functor.Alt(Alt((<!>)))
 import Data.Functor.Apply(Apply((<.>)))
 import Data.List.NonEmpty (NonEmpty)
-import Data.Monoid(Monoid(mappend, mempty))
 import Data.Ord(Ord)
 import Data.Semigroup(Semigroup((<>)))
 import Data.Traversable(Traversable(traverse))
@@ -176,14 +175,6 @@ instance Semigroup e => Semigroup (Validation e a) where
   (<>) =
     appValidation (<>)
   {-# INLINE (<>) #-}
-
-instance Monoid e => Monoid (Validation e a) where
-  mappend =
-    appValidation mappend
-  {-# INLINE mappend #-}
-  mempty =
-    Failure mempty
-  {-# INLINE mempty #-}
 
 instance Swapped Validation where
   swapped =
