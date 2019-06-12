@@ -113,33 +113,33 @@ testValidateNothing =
 
 testMappendNY :: Test
 testMappendNY =
-  let v1 = _Failure # [three]
-      v2 = _Success # [seven]
+  let v1 = Failure [three]
+      v2 = Success seven
       subject = v1 <> v2
       expected = Failure [three]
   in  TestCase (assertEqual "Failure <> Success" subject expected)
 
 testMappendYN :: Test
 testMappendYN =
-  let v1 = _Success # [three]
-      v2 = _Failure # [seven]
+  let v1 = Success three
+      v2 = Failure [seven]
       subject = v1 <> v2
       expected = Failure [seven]
   in  TestCase (assertEqual "Success <> Failure" subject expected)
 
 testMappendYY :: Test
 testMappendYY =
-  let v1 = _Success # [three]
-      v2 = _Success # [seven]
-      subject = v1 <> v2 :: Validation [Int] [Int]
-      expected = Success [three]
+  let v1 = Success three
+      v2 = Success seven
+      subject = v1 <> v2 :: Validation [Int] Int
+      expected = Success three
   in  TestCase (assertEqual "Success <> Success" subject expected)
 
 testMappendNN :: Test
 testMappendNN =
-  let v1 = _Failure # [three]
-      v2 = _Failure # [seven]
-      subject = v1 <> v2 :: Validation [Int] [Int]
+  let v1 = Failure [three]
+      v2 = Failure [seven]
+      subject = v1 <> v2 :: Validation [Int] Int
       expected = Failure [three, seven]
   in  TestCase (assertEqual "Failure <> Failure" subject expected)
 
@@ -155,7 +155,7 @@ tests =
         , testEnsureLeftJust
         , testEnsureRightNothing
         , testEnsureRightJust
-        , testEnsureRightJust' 
+        , testEnsureRightJust'
         , testOrElseLeft
         , testOrElseRight
         ]
