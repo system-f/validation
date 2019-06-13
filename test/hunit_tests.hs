@@ -9,6 +9,7 @@ import Control.Lens ((#))
 import Control.Monad (when)
 import Data.Foldable (length)
 import Data.Proxy (Proxy (Proxy))
+import Data.Semigroup(Semigroup((<>)))
 import Data.Validation (Validation (Success, Failure), Validate, _Failure, _Success, ensure,
                         orElse, validate, validation, validationNel)
 import System.Exit (exitFailure)
