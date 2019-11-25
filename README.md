@@ -1,6 +1,6 @@
 # Validation
 
-![Data61](http://i.imgur.com/uZnp9ke.jpg)
+![CSIRO's Data61 Logo](https://raw.githubusercontent.com/qfpl/assets/master/data61-transparent-bg.png)
 
 Several data-types like Either but with differing properties and type-class
 instances.
