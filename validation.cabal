@@ -10,7 +10,7 @@ copyright:          Copyright (C) 2010-2013 Tony Morris, Nick Partridge
 synopsis:           A data-type like Either but with an accumulating Applicative
 category:           Data
 description:
-  <<http://i.imgur.com/uZnp9ke.png>>
+  <<https://raw.githubusercontent.com/qfpl/assets/master/data61-transparent-bg.png>>
   .
   A data-type like Either but with differing properties and type-class
   instances.
