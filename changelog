@@ -1,3 +1,7 @@
+1.1.1
+
+* Add `Eq1`, `Eq2`, `Ord1`, `Ord2`, `Show1`, `Show2`, `Read`, `Read1`, and `Read2` instances
+
 1.1
 
 * Generalise types of `validate` and `ensure` functions to use `Maybe` instead of `Bool`
