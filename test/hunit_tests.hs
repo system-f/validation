@@ -9,6 +9,7 @@ import Control.Lens ((#))
 import Control.Monad (when)
 import Data.Foldable (length)
 import Data.Proxy (Proxy (Proxy))
+import Data.Semigroup(Semigroup((<>)))
 import Data.Validation (Validation (Success, Failure), Validate, _Failure, _Success, ensure,
                         orElse, validate, validation, validationNel)
 import System.Exit (exitFailure)
@@ -111,6 +112,38 @@ testValidateNothing =
       option = Nothing :: Maybe Int
   in  TestCase (assertEqual "testValidateFalse" subject expected)
 
+testMappendNY :: Test
+testMappendNY =
+  let v1 = Failure [three]
+      v2 = Success seven
+      subject = v1 <> v2
+      expected = Failure [three]
+  in  TestCase (assertEqual "Failure <> Success" subject expected)
+
+testMappendYN :: Test
+testMappendYN =
+  let v1 = Success three
+      v2 = Failure [seven]
+      subject = v1 <> v2
+      expected = Failure [seven]
+  in  TestCase (assertEqual "Success <> Failure" subject expected)
+
+testMappendYY :: Test
+testMappendYY =
+  let v1 = Success three
+      v2 = Success seven
+      subject = v1 <> v2 :: Validation [Int] Int
+      expected = Success three
+  in  TestCase (assertEqual "Success <> Success" subject expected)
+
+testMappendNN :: Test
+testMappendNN =
+  let v1 = Failure [three]
+      v2 = Failure [seven]
+      subject = v1 <> v2 :: Validation [Int] Int
+      expected = Failure [three, seven]
+  in  TestCase (assertEqual "Failure <> Failure" subject expected)
+
 tests :: Test
 tests =
   let eitherP :: Proxy Either
@@ -123,7 +156,7 @@ tests =
         , testEnsureLeftJust
         , testEnsureRightNothing
         , testEnsureRightJust
-        , testEnsureRightJust' 
+        , testEnsureRightJust'
         , testOrElseLeft
         , testOrElseRight
         ]
@@ -138,6 +171,10 @@ tests =
   , testValidateNothing
   , testValidateJust
   , testValidateJust'
+  , testMappendNY
+  , testMappendYY
+  , testMappendNN
+  , testMappendYN
   ] ++ eithers ++ validations
   where
 

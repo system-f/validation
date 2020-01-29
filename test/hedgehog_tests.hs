@@ -18,9 +18,6 @@ main = do
 
   result <- checkParallel $ Group "Validation"
     [ ("prop_semigroup", prop_semigroup)
-    , ("prop_monoid_assoc", prop_monoid_assoc)
-    , ("prop_monoid_left_id", prop_monoid_left_id)
-    , ("prop_monoid_right_id", prop_monoid_right_id)
     ]
 
   unless result $
@@ -44,19 +41,3 @@ mkAssoc f =
 
 prop_semigroup :: Property
 prop_semigroup = mkAssoc (<>)
-
-prop_monoid_assoc :: Property
-prop_monoid_assoc = mkAssoc mappend
-
-prop_monoid_left_id :: Property
-prop_monoid_left_id =
-  property $ do
-    x <- forAll testGen
-    (mempty `mappend` x) === x
-
-prop_monoid_right_id :: Property
-prop_monoid_right_id =
-  property $ do
-    x <- forAll testGen
-    (x `mappend` mempty) === x
-
