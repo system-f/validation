@@ -1,5 +1,5 @@
 name:               validation
-version:            1.1
+version:            1.2
 license:            BSD3
 license-file:       LICENCE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
@@ -35,7 +35,7 @@ bug-reports:        https://github.com/qfpl/validation/issues
 cabal-version:      >= 1.10
 build-type:         Simple
 extra-source-files: changelog
-tested-with:        GHC==8.6.4, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
+tested-with:        GHC==9.0.1, GHC==8.10.4, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
 
 source-repository   head
   type:             git
@@ -46,12 +46,13 @@ library
                     Haskell2010
 
   build-depends:
-                      base          >= 4.5 && < 5
-                    , deepseq       >= 1.2 && < 1.5
-                    , semigroups    >= 0.8 && < 1
-                    , semigroupoids >= 5   && < 6
-                    , bifunctors    >= 5.1 && < 6
-                    , lens          >= 4   && < 5
+                      assoc         >= 1.0  && < 2
+                    , base          >= 4.5  && < 5
+                    , deepseq       >= 1.2  && < 1.5
+                    , semigroups    >= 0.8  && < 1
+                    , semigroupoids >= 5    && < 6
+                    , bifunctors    >= 5.1  && < 6
+                    , lens          >= 4    && < 6
   if impl(ghc>=7.2) && impl(ghc<7.5)
     build-depends: ghc-prim == 0.2.0.0
 
@@ -100,7 +101,7 @@ test-suite hunit
   build-depends:
                       base       >= 3   && < 5
                     , HUnit      >= 1.5 && < 1.7
-                    , lens       >= 4   && < 5
+                    , lens       >= 4   && < 6
                     , semigroups >= 0.8 && < 1
                     , validation
 
