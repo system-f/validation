@@ -1,3 +1,12 @@
+1.2
+
+* Add Swap instance
+* Removed Swapped instance
+* Add support for GHC-9.0.*
+* Drop support for GHC-7.8.*, GHC-7.6.*, GHC-7.4.*, and GHC-7.2.*
+* Raise upper bounds on base and lens
+* Adjust lower bounds of most dependencies to be inline with the lowest supported GHC version of 7.10.3
+
 1.1
 
 * Generalise types of `validate` and `ensure` functions to use `Maybe` instead of `Bool`

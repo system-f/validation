@@ -1,0 +1,138 @@
+on:
+  # Build every pull request, to check for regressions.
+  pull_request:
+
+  # Build when a PR is merged, to update the README's CI badge.
+  push:
+#    branches: [main]
+
+name: build
+
+env:
+      CONFIG: --enable-benchmarks --enable-documentation --enable-tests --haddock-all --haddock-hyperlink-source --haddock-internal
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  # Run HLint to check for code improvements
+  hlint:
+    name: HLint Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2.3.4
+    - uses: haskell/actions/setup@v1.1.5
+    - run: |
+        curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s app bench test lib -j
+
+
+  # Check that the project builds with the specified lower bounds.
+  lower-bounds:
+    env:
+      CONSTRAINTS: --project-file=lower-bounds.project
+    name: Lower Bounds Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: haskell/actions/setup@v1.1.5
+        name: Setup Haskell
+        with:
+          cabal-version: latest
+          ghc-version:   8.8.4
+
+      - run: cabal update
+      - run: cabal clean
+      - run: cabal configure $CONFIG $CONSTRAINTS
+      - run: cabal freeze    $CONFIG $CONSTRAINTS
+      - uses: actions/cache@v2
+        name: caching lower bounds check
+        with:
+          path: |
+            ~/.cabal/store
+            dist-newstyle
+          key: ${{ runner.os }}-lower-bounds-${{ hashFiles('cabal.project.freeze') }}
+
+      - run: cabal build     $CONFIG $CONSTRAINTS --only-dependencies
+      - run: cabal build     $CONFIG $CONSTRAINTS
+
+
+  # Check that the project builds with the specified lower bounds.
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: haskell/actions/setup@v1.1.5
+        name: Setup Haskell
+        with:
+          cabal-version: latest
+          ghc-version:   latest
+
+      - run: cabal update
+      - run: cabal clean
+      - run: cabal configure --enable-tests --with-compiler=ghc
+      - run: cabal freeze    --enable-tests
+      - uses: actions/cache@v2
+        name: caching lower bounds check
+        with:
+          path: |
+            ~/.cabal/store
+            dist-newstyle
+          key: ${{ runner.os }}-tests-${{ hashFiles('cabal.project.freeze') }}
+
+      - run: cabal test
+
+
+  # Cabal build matrix
+  cabal-build-matrix:
+    name: GHC-${{ matrix.ghc }}, cabal${{matrix.cabal}}, ${{matrix.os}}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc:   [ '7.10.3', '8.0.2', '8.2.2', '8.4.4',' '8.6.5', '8.8.4', '8.10.4', '9.0.1' ]
+        cabal: [ 'latest']
+        os:    [ ubuntu-latest ]
+
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - name: Setup Haskell
+        uses: haskell/actions/setup@v1.1.5
+        with:
+          ghc-version:   ${{ matrix.ghc   }}
+          cabal-version: ${{ matrix.cabal }}
+      - run: gcc    --version
+      - run: g++    --version
+      - run: ghc    --version
+      - run: cabal update
+      - run: cabal clean
+      - run: cabal configure $CONFIG --with-compiler=ghc
+      - run: cabal freeze    $CONFIG
+      - uses: actions/cache@v2
+        name: windows caching
+        with:
+          path: |
+            c:\sr
+            dist-newstyle
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
+          # restore keys is a fall back when the freeze plan is different
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.ghc }}-
+        if:  matrix.os == 'windows-latest'
+      - uses: actions/cache@v2
+        name: ubuntu-linux and osx caching
+        with:
+          path: |
+            ~/.cabal/store
+            dist-newstyle
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
+          # restore keys is a fall back when the freeze plan is different
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.ghc }}-
+        if:  matrix.os != 'windows-latest'
+      - run: cabal build --only-dependencies
+      - run: cabal build $CONFIG
