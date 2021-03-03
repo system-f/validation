@@ -1,11 +1,8 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TypeFamilies #-}
-
-#if __GLASGOW_HASKELL__ >= 702
-{-# LANGUAGE DeriveGeneric #-}
-#endif
 
 -- | A data type similar to @Data.Either@ that accumulates failures.
 module Data.Validation
@@ -64,9 +61,7 @@ import Data.Ord(Ord)
 import Data.Semigroup(Semigroup((<>)))
 import Data.Traversable(Traversable(traverse))
 import Data.Typeable(Typeable)
-#if __GLASGOW_HASKELL__ >= 702
 import GHC.Generics (Generic)
-#endif
 import Prelude(Show, Maybe(..))
 
 
@@ -83,12 +78,7 @@ import Prelude(Show, Maybe(..))
 data Validation err a =
   Failure err
   | Success a
-  deriving (
-    Eq, Ord, Show, Data, Typeable
-#if __GLASGOW_HASKELL__ >= 702
-    , Generic
-#endif
-  )
+  deriving (Data, Eq, Generic, Ord, Show, Typeable)
 
 instance Functor (Validation err) where
   fmap _ (Failure e) =
@@ -188,10 +178,10 @@ instance Monoid e => Monoid (Validation e a) where
 instance Swapped Validation where
   swapped =
     iso
-      (\v -> case v of
+      (\case
         Failure e -> Success e
         Success a -> Failure a)
-      (\v -> case v of
+      (\case
         Failure a -> Success a
         Success e -> Failure e)
   {-# INLINE swapped #-}
@@ -231,7 +221,7 @@ liftError f = either (Failure . f) Success
 
 -- | 'validation' is the catamorphism for @Validation@.
 validation :: (e -> c) -> (a -> c) -> Validation e a -> c
-validation ec ac v = case v of
+validation ec ac = \case
   Failure e -> ec e
   Success a -> ac a
 
@@ -278,7 +268,7 @@ codiagonal = valueOr id
 -- @
 ensure :: Validate v => e -> (a -> Maybe b) -> v e a -> v e b
 ensure e p =
-  over _Validation $ \v -> case v of
+  over _Validation $ \case
     Failure x -> Failure x
     Success a -> validate e p a
 
@@ -289,7 +279,7 @@ ensure e p =
 --
 -- @(Either e a -> Either e' a') -> Validation e a -> Validation e' a'@
 validationed :: Validate v => (v e a -> v e' a') -> Validation e a -> Validation e' a'
-validationed f = under _Validation f
+validationed = under _Validation
 
 -- | @bindValidation@ binds through an Validation, which is useful for
 -- composing Validations sequentially. Note that despite having a bind
@@ -328,10 +318,10 @@ instance Validate Validation where
   {-# INLINE _Validation #-}
   _Either =
     iso
-      (\x -> case x of
+      (\case
         Failure e -> Left e
         Success a -> Right a)
-      (\x -> case x of
+      (\case
         Left e -> Failure e
         Right a -> Success a)
   {-# INLINE _Either #-}

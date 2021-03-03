@@ -1,3 +1,8 @@
+### *Unreleased*
+
+* Drop support for GHC-7.8.*, GHC-7.6.*, GHC-7.4.*, and GHC-7.2.*
+* Adjust lower bounds of most dependencies to be inline with the lowest supported GHC version of 7.10.3
+
 1.1
 
 * Generalise types of `validate` and `ensure` functions to use `Maybe` instead of `Bool`

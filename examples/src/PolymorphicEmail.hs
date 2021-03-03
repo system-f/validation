@@ -41,7 +41,7 @@ nonEmptyString x = if x /= []
 
 -- ***** Combining smart constructors *****
 email :: (Validate f, Applicative (f [VError])) => String -> f [VError] Email
-email x = pure (Email x)   <*
+email x = Email x          <$
           nonEmptyString x <*
           atString       x <*
           periodString   x
