@@ -44,11 +44,15 @@ import Control.Applicative(Applicative((<*>), pure), (<$>))
 import Control.DeepSeq (NFData (rnf))
 import Control.Lens (over, under)
 import Control.Lens.Getter((^.))
-import Control.Lens.Iso(Swapped(..), Iso, iso, from)
+import Control.Lens.Iso(Iso, iso, from)
+#if !MIN_VERSION_lens(4,20,0)
+import Control.Lens.Iso(Swapped(..))
+#endif
 import Control.Lens.Prism(Prism, prism)
 import Control.Lens.Review(( # ))
 import Data.Bifoldable(Bifoldable(bifoldr))
 import Data.Bifunctor(Bifunctor(bimap))
+import Data.Bifunctor.Swap(Swap(..))
 import Data.Bitraversable(Bitraversable(bitraverse))
 import Data.Data(Data)
 import Data.Either(Either(Left, Right), either)
@@ -185,16 +189,18 @@ instance Monoid e => Monoid (Validation e a) where
     Failure mempty
   {-# INLINE mempty #-}
 
+#if !MIN_VERSION_lens(4,20,0)
 instance Swapped Validation where
-  swapped =
-    iso
-      (\v -> case v of
-        Failure e -> Success e
-        Success a -> Failure a)
-      (\v -> case v of
-        Failure a -> Success a
-        Success e -> Failure e)
+  swapped = iso swap swap
   {-# INLINE swapped #-}
+#endif
+
+instance Swap Validation where
+  swap v =
+    case v of
+      Failure e -> Success e
+      Success a -> Failure a
+  {-# INLINE swap #-}
 
 instance (NFData e, NFData a) => NFData (Validation e a) where
   rnf v =
