@@ -1,3 +1,8 @@
+1.1.1
+
+* Add `Data.Bifunctor.Swap.Swap` instance from `swap`
+* Support `lens ^>= 5`
+
 1.1
 
 * Generalise types of `validate` and `ensure` functions to use `Maybe` instead of `Bool`
@@ -98,4 +103,3 @@ Provide Isos between (ValidationT Identity) and other data types.
 0.3.4
 
 Loosen the type of the Isos for polymorphic update.
-
