@@ -1,5 +1,7 @@
-### *Unreleased*
+1.1.1
 
+* Add `Data.Bifunctor.Swap.Swap` instance from `swap`
+* Support `lens ^>= 5`
 * Drop support for GHC-7.8.*, GHC-7.6.*, GHC-7.4.*, and GHC-7.2.*
 * Adjust lower bounds of most dependencies to be inline with the lowest supported GHC version of 7.10.3
 
@@ -103,4 +105,3 @@ Provide Isos between (ValidationT Identity) and other data types.
 0.3.4
 
 Loosen the type of the Isos for polymorphic update.
-

@@ -8,14 +8,8 @@ let
                        then pkgs.haskellPackages
                        else pkgs.haskell.packages.${compiler};
 
-  modifiedHaskellPackages = haskellPackages.override {
-    overrides = self: super: {
-      hedgehog       = self.callHackage "hedgehog" "0.6" {};
-      concurrent-output = pkgs.haskell.lib.doJailbreak super.concurrent-output;
-    };
-  };
 
-  validation = modifiedHaskellPackages.callPackage ./validation.nix {};
+  validation = haskellPackages.callPackage ./validation.nix {};
 
 in
 
