@@ -1,5 +1,5 @@
 name:               validation
-version:            1.1.1
+version:            1.1.2
 license:            BSD3
 license-file:       LICENCE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
@@ -35,7 +35,7 @@ bug-reports:        https://github.com/qfpl/validation/issues
 cabal-version:      >= 1.10
 build-type:         Simple
 extra-source-files: changelog
-tested-with:        GHC==8.6.4, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
+tested-with:        GHC==9.0.1, GHC==8.10.4, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3
 
 source-repository   head
   type:             git
@@ -46,15 +46,13 @@ library
                     Haskell2010
 
   build-depends:
-                      base          >= 4.5 && < 5
-                    , assoc         >= 1   && < 1.1
-                    , deepseq       >= 1.2 && < 1.5
-                    , semigroups    >= 0.8 && < 1
-                    , semigroupoids >= 5   && < 6
-                    , bifunctors    >= 5.1 && < 6
-                    , lens          >= 4   && < 5.1
-  if impl(ghc>=7.2) && impl(ghc<7.5)
-    build-depends: ghc-prim == 0.2.0.0
+                      base          >= 4.8  && < 5
+                    , assoc         >= 1    && < 1.1
+                    , deepseq       >= 1.4  && < 1.5
+                    , semigroups    >= 0.16 && < 1
+                    , semigroupoids >= 5    && < 6
+                    , bifunctors    >= 5.5  && < 6
+                    , lens          >= 4    && < 6
 
   ghc-options:
                     -Wall
@@ -76,9 +74,9 @@ test-suite hedgehog
                     Haskell2010
 
   build-depends:
-                      base       >= 3   && < 5
-                    , hedgehog   >= 0.5 && < 1.1
-                    , semigroups >= 0.8 && < 1
+                      base       >= 4.8  && < 5
+                    , hedgehog   >= 0.5  && < 1.1
+                    , semigroups >= 0.16 && < 1
                     , validation
 
   ghc-options:
@@ -99,10 +97,10 @@ test-suite hunit
                     Haskell2010
 
   build-depends:
-                      base       >= 3   && < 5
-                    , HUnit      >= 1.5 && < 1.7
-                    , lens
-                    , semigroups >= 0.8 && < 1
+                      base       >= 4.8  && < 5
+                    , HUnit      >= 1.5  && < 1.7
+                    , lens       >= 4    && < 5
+                    , semigroups >= 0.16 && < 1
                     , validation
 
   ghc-options:

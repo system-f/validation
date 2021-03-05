@@ -40,7 +40,7 @@ nonEmptyString x = if x /= []
 
 -- ***** Combining smart constructors *****
 email :: String -> Validation [VError] Email
-email x = pure (Email x)   <*
+email x = Email x          <$
           nonEmptyString x <*
           atString       x <*
           periodString   x

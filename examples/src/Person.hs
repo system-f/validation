@@ -21,27 +21,27 @@ data Error = NameBetween1And50
 -- Smart constructors
 mkName :: String -> Validation [Error] Name
 mkName s = let l = length s
-           in if (l >= 1 && l <= 50)
+           in if l >= 1 && l <= 50
               then _Success # Name s
               else _Failure # [ NameBetween1And50 ]
 
 
 mkEmail :: String -> Validation [Error] Email
-mkEmail s = if isInfixOf "@" s
+mkEmail s = if "@" `isInfixOf` s
             then _Success # Email s
             else _Failure # [ EmailMustContainAtChar ]
 
 mkAge :: Int -> Validation [Error] Age
-mkAge a = if (a >= 0 && a <= 120)
+mkAge a = if a >= 0 && a <= 120
           then _Success # Age a
           else _Failure # [ AgeBetween0and120 ]
 
 mkPerson :: String -> String -> Int -> Validation [Error] Person
 mkPerson pName pEmail pAge =
   Person
-  <$> (mkName pName)
-  <*> (mkEmail pEmail)
-  <*> (mkAge pAge)
+  <$> mkName pName
+  <*> mkEmail pEmail
+  <*> mkAge pAge
 
 -- Examples
 -- Data constructors for `Name`, `Age`, `Email`, and `Person` should not be
