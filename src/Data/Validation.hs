@@ -42,9 +42,11 @@ import Control.Applicative(Applicative((<*>), pure), (<$>))
 import Control.DeepSeq (NFData (rnf))
 import Control.Lens (over, under)
 import Control.Lens.Getter((^.))
-import Control.Lens.Iso(Iso, iso, from)
+import Control.Lens.Iso(Iso, iso, from
 #if !MIN_VERSION_lens(4,20,0)
-import Control.Lens.Iso(Swapped(..))
+                       , Swapped(..))
+#else
+                       )
 #endif
 import Control.Lens.Prism(Prism, prism)
 import Control.Lens.Review(( # ))
