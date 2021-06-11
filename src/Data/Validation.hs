@@ -72,7 +72,7 @@ import GHC.Generics (Generic)
 import Prelude(Show, Maybe(..))
 
 
--- | An @Validation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
+-- | A @Validation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
 -- the 'Applicative' instance for @Validation@ /accumulates/ errors using a 'Semigroup' on @err@.
 -- In contrast, the @Applicative@ for @Either@ returns only the first error.
 --
@@ -290,7 +290,7 @@ ensure e p =
 validationed :: Validate v => (v e a -> v e' a') -> Validation e a -> Validation e' a'
 validationed = under _Validation
 
--- | @bindValidation@ binds through an Validation, which is useful for
+-- | @bindValidation@ binds through a Validation, which is useful for
 -- composing Validations sequentially. Note that despite having a bind
 -- function of the correct type, Validation is not a monad.
 -- The reason is, this bind does not accumulate errors, so it does not
