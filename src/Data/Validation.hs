@@ -48,7 +48,7 @@ import Control.Lens.Iso(Iso, iso, from
 #else
                        )
 #endif
-import Control.Lens.Prism(Prism, prism)
+import Control.Lens.Prism(Prism, _Left, _Right)
 import Control.Lens.Review(( # ))
 import Data.Bifoldable(Bifoldable(bifoldr))
 import Data.Bifunctor(Bifunctor(bimap))
@@ -311,29 +311,13 @@ class Validate f where
 
   _Either ::
     Iso (f e a) (f g b) (Either e a) (Either g b)
-  _Either =
-    iso
-      (\x -> case x ^. _Validation of
-        Failure e -> Left e
-        Success a -> Right a)
-      (\x -> _Validation # case x of
-        Left e -> Failure e
-        Right a -> Success a)
+  _Either = _Validation . iso toEither fromEither
   {-# INLINE _Either #-}
 
 instance Validate Validation where
   _Validation =
     id
   {-# INLINE _Validation #-}
-  _Either =
-    iso
-      (\case
-        Failure e -> Left e
-        Success a -> Right a)
-      (\case
-        Left e -> Failure e
-        Right a -> Success a)
-  {-# INLINE _Either #-}
 
 instance Validate Either where
   _Validation =
@@ -349,24 +333,14 @@ instance Validate Either where
 _Failure ::
   Validate f =>
   Prism (f e1 a) (f e2 a) e1 e2
-_Failure =
-  prism
-    (\x -> _Either # Left x)
-    (\x -> case x ^. _Either of
-             Left e -> Right e
-             Right a -> Left (_Either # Right a))
-{-# INLINE _Failure #-}
+_Failure = _Either . _Left
+{-# INLINE [1] _Failure #-}
 
 -- | This prism generalises 'Control.Lens.Prism._Right'. It targets the success case of either 'Either' or 'Validation'.
 _Success ::
   Validate f =>
   Prism (f e a) (f e b) a b
-_Success =
-  prism
-    (\x -> _Either # Right x)
-    (\x -> case x ^. _Either of
-             Left e -> Left (_Either # Left e)
-             Right a -> Right a)
+_Success = _Either . _Right
 {-# INLINE _Success #-}
 
 -- | 'revalidate' converts between any two instances of 'Validate'.
