@@ -334,7 +334,7 @@ _Failure ::
   Validate f =>
   Prism (f e1 a) (f e2 a) e1 e2
 _Failure = _Either . _Left
-{-# INLINE [1] _Failure #-}
+{-# INLINE _Failure #-}
 
 -- | This prism generalises 'Control.Lens.Prism._Right'. It targets the success case of either 'Either' or 'Validation'.
 _Success ::
