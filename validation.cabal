@@ -47,10 +47,10 @@ library
 
   build-depends:
                       base          >= 4.8  && < 5
-                    , assoc         >= 1    && < 1.1
+                    , assoc         >= 1    && < 2
                     , deepseq       >= 1.4  && < 1.5
                     , semigroups    >= 0.16 && < 1
-                    , semigroupoids >= 5    && < 6
+                    , semigroupoids >= 5    && < 7
                     , bifunctors    >= 5.5  && < 6
                     , lens          >= 4    && < 6
 
@@ -75,7 +75,7 @@ test-suite hedgehog
 
   build-depends:
                       base       >= 4.8  && < 5
-                    , hedgehog   >= 0.5  && < 1.1
+                    , hedgehog   >= 0.5  && < 2
                     , semigroups >= 0.16 && < 1
                     , validation
 
@@ -99,7 +99,7 @@ test-suite hunit
   build-depends:
                       base       >= 4.8  && < 5
                     , HUnit      >= 1.5  && < 1.7
-                    , lens       >= 4    && < 5
+                    , lens       >= 4    && < 6
                     , semigroups >= 0.16 && < 1
                     , validation
 
