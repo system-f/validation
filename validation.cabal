@@ -35,7 +35,7 @@ bug-reports:        https://github.com/qfpl/validation/issues
 cabal-version:      >= 1.10
 build-type:         Simple
 extra-source-files: changelog
-tested-with:        GHC==9.0.1, GHC==8.10.4, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3
+tested-with:        GHC==9.0.1, GHC==8.10.4, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4
 
 source-repository   head
   type:             git
@@ -46,11 +46,11 @@ library
                     Haskell2010
 
   build-depends:
-                      base          >= 4.8  && < 5
-                    , assoc         >= 1    && < 1.1
+                      base          >= 4.11 && < 5
+                    , assoc         >= 1    && < 2
                     , deepseq       >= 1.4  && < 1.5
                     , semigroups    >= 0.16 && < 1
-                    , semigroupoids >= 5    && < 6
+                    , semigroupoids >= 5    && < 7
                     , bifunctors    >= 5.5  && < 6
                     , lens          >= 4    && < 6
 
@@ -74,8 +74,8 @@ test-suite hedgehog
                     Haskell2010
 
   build-depends:
-                      base       >= 4.8  && < 5
-                    , hedgehog   >= 0.5  && < 1.1
+                      base       >= 4.11 && < 5
+                    , hedgehog   >= 0.5  && < 2
                     , semigroups >= 0.16 && < 1
                     , validation
 
@@ -97,9 +97,9 @@ test-suite hunit
                     Haskell2010
 
   build-depends:
-                      base       >= 4.8  && < 5
+                      base       >= 4.11  && < 5
                     , HUnit      >= 1.5  && < 1.7
-                    , lens       >= 4    && < 5
+                    , lens       >= 4    && < 6
                     , semigroups >= 0.16 && < 1
                     , validation
 
