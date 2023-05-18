@@ -1,17 +1,17 @@
 constraints:
   assoc         ==1.0.*,
-  base          ==4.8.*,
+  base          ==4.11.*,
   bifunctors    ==5.5.*,
   deepseq       ==1.4.*,
-  ghc-prim      ==0.4.0.*,
+  ghc-prim      ==0.5.*,
   hedgehog      ==0.5.*,
-  HUnit         ==1.5.*,
+  HUnit         ==1.6.*,
   lens          ==4.*,
   semigroupoids ==5.*,
-  semigroups    ==0.16.*
+  semigroups    ==0.18.*
 
 packages:
   ./
   examples/
 
-with-compiler: ghc-7.10.3
+with-compiler: ghc-8.4.4

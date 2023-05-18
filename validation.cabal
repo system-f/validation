@@ -46,13 +46,13 @@ library
                     Haskell2010
 
   build-depends:
-                      base          >= 4.11 && < 5
-                    , assoc         >= 1    && < 2
-                    , deepseq       >= 1.4  && < 1.5
-                    , semigroups    >= 0.16 && < 1
-                    , semigroupoids >= 5    && < 7
-                    , bifunctors    >= 5.5  && < 6
-                    , lens          >= 4    && < 6
+                      base          >= 4.11   && < 5
+                    , assoc         >= 1      && < 2
+                    , deepseq       >= 1.4.3  && < 1.5
+                    , semigroups    >= 0.18.2 && < 1
+                    , semigroupoids >= 5.2.2  && < 7
+                    , bifunctors    >= 5.5    && < 6
+                    , lens          >= 4.0.5  && < 6
 
   ghc-options:
                     -Wall
@@ -74,9 +74,9 @@ test-suite hedgehog
                     Haskell2010
 
   build-depends:
-                      base       >= 4.11 && < 5
-                    , hedgehog   >= 0.5  && < 2
-                    , semigroups >= 0.16 && < 1
+                      base       >= 4.11   && < 5
+                    , hedgehog   >= 0.5    && < 2
+                    , semigroups >= 0.18.2 && < 1
                     , validation
 
   ghc-options:
@@ -97,10 +97,10 @@ test-suite hunit
                     Haskell2010
 
   build-depends:
-                      base       >= 4.11  && < 5
-                    , HUnit      >= 1.5  && < 1.7
-                    , lens       >= 4    && < 6
-                    , semigroups >= 0.16 && < 1
+                      base       >= 4.11   && < 5
+                    , HUnit      >= 1.6    && < 1.7
+                    , lens       >= 4.0.5  && < 6
+                    , semigroups >= 0.18.2 && < 1
                     , validation
 
   ghc-options:
