@@ -49,6 +49,7 @@ library
                       base          >= 4.11   && < 5
                     , assoc         >= 1      && < 2
                     , deepseq       >= 1.4.3  && < 1.5
+                    , selective     >= 0.6    && < 1
                     , semigroups    >= 0.18.2 && < 1
                     , semigroupoids >= 5.2.2  && < 7
                     , bifunctors    >= 5.5    && < 6

@@ -50,6 +50,7 @@ import Control.Lens.Iso(Iso, iso, from
 #endif
 import Control.Lens.Prism(Prism, _Left, _Right)
 import Control.Lens.Review(( # ))
+import Control.Selective(Selective(..))
 import Data.Bifoldable(Bifoldable(bifoldr))
 import Data.Bifunctor(Bifunctor(bimap))
 import Data.Bifunctor.Swap(Swap(..))
@@ -117,6 +118,10 @@ instance Alt (Validation err) where
   Success a <!> _ =
     Success a
   {-# INLINE (<!>) #-}
+
+instance Semigroup err => Selective (Validation err) where
+  select (Failure e) _ = Failure e
+  select (Success x) f = either (\a -> ($ a) <$> f) Success x
 
 instance Foldable (Validation err) where
   foldr f x (Success a) =
