@@ -1,6 +1,6 @@
 # Validation
 
-![CSIRO's Data61 Logo](https://raw.githubusercontent.com/qfpl/assets/master/data61-transparent-bg.png)
+![System F Logo](https://logo.systemf.com.au/systemf-450x450.png)
 
 Several data-types like Either but with differing properties and type-class
 instances.
@@ -21,4 +21,3 @@ Download from [hackage](http://hackage.haskell.org/package/validation).
   As a consequence of this `Applicative` instance, there is no corresponding
   `Bind` or `Monad` instance. `Validation` is an example of, "An applicative
   functor that is not a monad."
-
