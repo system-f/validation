@@ -21,7 +21,7 @@ jobs:
     name: HLint Check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.3.4
+    - uses: actions/checkout@v4
     - uses: haskell/actions/setup@v2
     - run: |
         curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s examples/src src -j
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: haskell/actions/setup@v2
         name: Setup Haskell
         with:
@@ -46,7 +46,7 @@ jobs:
       - run: cabal clean
       - run: cabal configure $CONFIG $CONSTRAINTS
       - run: cabal freeze    $CONFIG $CONSTRAINTS
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         name: caching lower bounds check
         with:
           path: |
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: haskell/actions/setup@v2
         name: Setup Haskell
         with:
@@ -75,7 +75,7 @@ jobs:
       - run: cabal clean
       - run: cabal configure --enable-tests --with-compiler=ghc
       - run: cabal freeze    --enable-tests
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         name: caching lower bounds check
         with:
           path: |
@@ -98,7 +98,7 @@ jobs:
         os:    [ ubuntu-latest ]
 
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
       - uses: haskell/actions/setup@v2
         name: Setup Haskell
         with:
@@ -111,7 +111,7 @@ jobs:
       - run: cabal clean
       - run: cabal configure $CONFIG --with-compiler=ghc
       - run: cabal freeze    $CONFIG
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         name: windows caching
         with:
           path: |
@@ -122,7 +122,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.ghc }}-
         if:  matrix.os == 'windows-latest'
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         name: ubuntu-linux and osx caching
         with:
           path: |
