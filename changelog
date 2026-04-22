@@ -1,3 +1,24 @@
+1.2.0
+
+* Add Validator e p x a profunctor transformer newtype with instances
+  for Functor, Apply, Applicative, Alt, Selective, Profunctor, Strong,
+  Choice, Semigroupoid, Category, Arrow, ArrowChoice, ArrowApply, and
+  Wrapped/Rewrapped
+* Add classy optics for Validator (GetValidator, HasValidator,
+  ReviewValidator, AsValidator)
+* Add profunctor newtypes Iso'' and Prism'' for wrapping monomorphic
+  optics as two-parameter profunctors
+* Add unitValidator, taggedValidator, and swapValidator isomorphisms
+* Add nonEmptyList example validators using Iso'' and Prism''
+* Add tagged package dependency
+* Expand hedgehog property tests from 4 to 35 covering semigroup,
+  monoid, functor, applicative, apply, alt, bifunctor, foldValidation,
+  iso/prism roundtrips, swap, and all Validator instances
+* Replace HUnit tests with doctest suite (187 examples)
+* Add tests: True to cabal.project
+* Update examples for current API (remove Validate class, use either iso)
+* Hide Prelude.either to avoid ambiguity with Data.Validation.either
+
 1.1.5
 
 * Update version bounds
