@@ -1,3 +1,11 @@
 - ignore: {name: "Monoid law, left identity", within: [Main]}
 - ignore: {name: "Monoid law, right identity", within: [Main]}
 - ignore: {name: "Redundant id", within: [Main]}
+- ignore: {name: "Functor law", within: [Main]}
+- ignore: {name: "Use <$>", within: [Main]}
+- ignore: {name: "Redundant bimap", within: [Main]}
+- ignore: {name: "Use second", within: [Main]}
+- ignore: {name: "Use first", within: [Main]}
+- ignore: {name: "Redundant ^.", within: [Main]}
+- ignore: {name: "Redundant bracket", within: [Main]}
+- ignore: {name: "Use uncurry", within: [Data.Validation]}

@@ -55,6 +55,8 @@ library
                     , semigroupoids >= 5.2.2  && < 7
                     , bifunctors    >= 5.5    && < 6
                     , lens          >= 4.0.5  && < 6
+                    , profunctors   >= 5      && < 6
+                    , tagged        >= 0.8    && < 1
 
   ghc-options:
                     -Wall
@@ -76,9 +78,13 @@ test-suite hedgehog
                     Haskell2010
 
   build-depends:
-                      base       >= 4.11   && < 5
-                    , hedgehog   >= 0.5    && < 2
-                    , semigroups >= 0.18.2 && < 1
+                      base         >= 4.11   && < 5
+                    , assoc        >= 1      && < 2
+                    , bifunctors   >= 5.5    && < 6
+                    , hedgehog     >= 0.5    && < 2
+                    , lens         >= 4.0.5  && < 6
+                    , semigroupoids >= 5.2.2 && < 7
+                    , semigroups   >= 0.18.2 && < 1
                     , validation
 
   ghc-options:
@@ -88,22 +94,19 @@ test-suite hedgehog
   hs-source-dirs:
                     test
 
-test-suite hunit
+test-suite doctest
   type:
                     exitcode-stdio-1.0
 
   main-is:
-                    hunit_tests.hs
+                    doctest_tests.hs
 
   default-language:
                     Haskell2010
 
   build-depends:
                       base       >= 4.11   && < 5
-                    , HUnit      >= 1.6    && < 1.7
-                    , lens       >= 4.0.5  && < 6
-                    , semigroups >= 0.18.2 && < 1
-                    , validation
+                    , process    >= 1.6    && < 2
 
   ghc-options:
                     -Wall
