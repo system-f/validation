@@ -62,7 +62,15 @@ main = do
           ("prop_validator_semigroupoid_assoc", prop_validator_semigroupoid_assoc),
           ("prop_validator_apply_accumulates", prop_validator_apply_accumulates),
           ("prop_validator_alt_accumulates", prop_validator_alt_accumulates),
-          ("prop_validator_alt_left_success", prop_validator_alt_left_success)
+          ("prop_validator_alt_left_success", prop_validator_alt_left_success),
+          ("prop_either_reviewFailure", prop_either_reviewFailure),
+          ("prop_either_asFailure_hit", prop_either_asFailure_hit),
+          ("prop_either_asFailure_miss", prop_either_asFailure_miss),
+          ("prop_either_reviewSuccess", prop_either_reviewSuccess),
+          ("prop_either_asSuccess_hit", prop_either_asSuccess_hit),
+          ("prop_either_asSuccess_miss", prop_either_asSuccess_miss),
+          ("prop_either_failure_roundtrip", prop_either_failure_roundtrip),
+          ("prop_either_success_roundtrip", prop_either_success_roundtrip)
         ]
 
   unless result exitFailure
@@ -384,3 +392,62 @@ prop_validator_alt_left_success =
     let f = Validator (Success . (+ 1)) :: Validator' [String] Int Int
         g = Validator (\_ -> Failure ["e2"]) :: Validator' [String] Int Int
     runV (f <!> g) x === Success (x + 1)
+
+-- Either instances: ReviewFailure, AsFailure, ReviewSuccess, AsSuccess
+
+genEither :: Gen a -> Gen b -> Gen (Prelude.Either a b)
+genEither ga gb = Gen.choice [fmap Left ga, fmap Right gb]
+
+prop_either_reviewFailure :: Property
+prop_either_reviewFailure =
+  property $ do
+    e <- forAll genStrings
+    (reviewFailure # e :: Prelude.Either [String] Int) === Left e
+
+prop_either_asFailure_hit :: Property
+prop_either_asFailure_hit =
+  property $ do
+    e <- forAll genStrings
+    (Left e :: Prelude.Either [String] Int) ^? _Failure === Just e
+
+prop_either_asFailure_miss :: Property
+prop_either_asFailure_miss =
+  property $ do
+    a <- forAll genInt
+    (Right a :: Prelude.Either [String] Int) ^? _Failure === Nothing
+
+prop_either_reviewSuccess :: Property
+prop_either_reviewSuccess =
+  property $ do
+    a <- forAll genInt
+    (reviewSuccess # a :: Prelude.Either [String] Int) === Right a
+
+prop_either_asSuccess_hit :: Property
+prop_either_asSuccess_hit =
+  property $ do
+    a <- forAll genInt
+    (Right a :: Prelude.Either [String] Int) ^? _Success === Just a
+
+prop_either_asSuccess_miss :: Property
+prop_either_asSuccess_miss =
+  property $ do
+    e <- forAll genStrings
+    (Left e :: Prelude.Either [String] Int) ^? _Success === Nothing
+
+prop_either_failure_roundtrip :: Property
+prop_either_failure_roundtrip =
+  property $ do
+    x <- forAll (genEither genStrings genInt)
+    let reviewed = x ^? _Failure
+    case x of
+      Left e -> reviewed === Just e
+      Right _ -> reviewed === Nothing
+
+prop_either_success_roundtrip :: Property
+prop_either_success_roundtrip =
+  property $ do
+    x <- forAll (genEither genStrings genInt)
+    let reviewed = x ^? _Success
+    case x of
+      Right a -> reviewed === Just a
+      Left _ -> reviewed === Nothing
