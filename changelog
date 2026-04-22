@@ -1,3 +1,9 @@
+1.2.2
+
+* Implement Either instances for ReviewFailure, AsFailure, ReviewSuccess,
+  and AsSuccess
+* Add hedgehog property tests for Either optic instances
+
 1.2.1
 
 * Updates to documentation.
