@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: haskell/actions/setup@v2.9.0
+    - uses: haskell-actions/setup@v2.9.1
     - run: |
         curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s examples/src src -j
 
@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: haskell/actions/setup@v2.9.0
+      - uses: haskell-actions/setup@v2.9.1
         name: Setup Haskell
         with:
           cabal-version: latest
@@ -65,7 +65,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: haskell/actions/setup@v2.9.0
+      - uses: haskell-actions/setup@v2.9.1
         name: Setup Haskell
         with:
           cabal-version: latest
@@ -99,7 +99,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: haskell/actions/setup@v2.9.0
+      - uses: haskell-actions/setup@v2.9.1
         name: Setup Haskell
         with:
           ghc-version:   ${{ matrix.ghc   }}
