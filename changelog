@@ -1,3 +1,7 @@
+1.2.1
+
+* Updates to documentation.
+
 1.2.0
 
 * Add Validator e p x a profunctor transformer newtype with instances
