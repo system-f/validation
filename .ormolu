@@ -1,0 +1,2 @@
+infixl 4 <.>
+infixl 3 <!>

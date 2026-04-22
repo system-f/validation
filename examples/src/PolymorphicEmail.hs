@@ -1,84 +1,72 @@
--- Modification of the Email example, that leaves the validation
--- functions polymorphic.
+-- Modification of the Email example that demonstrates converting
+-- between Validation and Either using the 'either' isomorphism.
+--
+-- Validation accumulates all errors; Either short-circuits on first.
 
--- This lets us choose whether to accumulate all errors, by specialising
--- to Validation, or abort on the first error with Either.
-
--- Aside from main, the code is unchanged but the type signatures have
--- been relaxed to be as polymorphic as possible.
-
-import Prelude
-
-import Control.Lens
+import Control.Lens ((#), (^.))
 import Data.List (isInfixOf)
 import Data.Validation
+import Prelude hiding (either)
 
 newtype Email = Email String deriving (Show)
 
-data VError = MustNotBeEmpty
-            | MustContainAt
-            | MustContainPeriod
-            deriving (Show)
+data VError
+  = MustNotBeEmpty
+  | MustContainAt
+  | MustContainPeriod
+  deriving (Show)
 
 -- ***** Base smart constructors *****
--- String must contain an '@' character
-atString :: Validate f => String -> f [VError] ()
-atString x = if "@" `isInfixOf` x
-             then _Success # ()
-             else _Failure # [MustContainAt]
 
--- String must contain an '.' character
-periodString :: Validate f => String -> f [VError] ()
-periodString x = if "." `isInfixOf` x
-                 then _Success # ()
-                 else _Failure # [MustContainPeriod]
+atString :: String -> Validation [VError] ()
+atString x =
+  if "@" `isInfixOf` x
+    then _Success # ()
+    else _Failure # [MustContainAt]
 
--- String must not be empty
-nonEmptyString :: Validate f => String -> f [VError] ()
-nonEmptyString x = if x /= []
-                   then _Success # ()
-                   else _Failure # [MustNotBeEmpty]
+periodString :: String -> Validation [VError] ()
+periodString x =
+  if "." `isInfixOf` x
+    then _Success # ()
+    else _Failure # [MustContainPeriod]
+
+nonEmptyString :: String -> Validation [VError] ()
+nonEmptyString x =
+  if x /= []
+    then _Success # ()
+    else _Failure # [MustNotBeEmpty]
 
 -- ***** Combining smart constructors *****
-email :: (Validate f, Applicative (f [VError])) => String -> f [VError] Email
-email x = Email x          <$
-          nonEmptyString x <*
-          atString       x <*
-          periodString   x
+
+email :: String -> Validation [VError] Email
+email x =
+  Email x
+    <$ nonEmptyString x
+    <* atString x
+    <* periodString x
 
 -- ***** Example usage *****
-success :: (Applicative (f [VError]), Validate f) => f [VError] Email
+
+success :: Validation [VError] Email
 success = email "bob@gmail.com"
--- Success (Email "bob@gmail.com")
 
-failureAt :: (Applicative (f [VError]), Validate f) => f [VError] Email
+failureAt :: Validation [VError] Email
 failureAt = email "bobgmail.com"
--- Failure [MustContainAt]
 
-failurePeriod :: (Applicative (f [VError]), Validate f) => f [VError] Email
+failurePeriod :: Validation [VError] Email
 failurePeriod = email "bob@gmailcom"
--- Failure [MustContainPeriod]
 
-failureAll :: (Applicative (f [VError]), Validate f) => f [VError] Email
+failureAll :: Validation [VError] Email
 failureAll = email ""
--- Failure [MustNotBeEmpty,MustContainAt,MustContainPeriod]
-
-
--- Helper to force a validation to Validation
-asVal :: Validation a b -> Validation a b
-asVal = id
-
--- Helper to force a validation to Validation
-asEither :: Either a b -> Either a b
-asEither = id
 
 main :: IO ()
 main = do
-  putStrLn "Collect all errors"
-  putStrLn $ "email \"bob@gmail.com\": " ++ show (asVal success)
-  putStrLn $ "email \"bobgmail.com\":  " ++ show (asVal failureAt)
-  putStrLn $ "email \"bob@gmailcom\":  " ++ show (asVal failurePeriod)
-  putStrLn $ "email \"\":              " ++ show (asVal failureAll)
-  putStrLn "Stop at the first error"
-  putStrLn $ "email \"bob@gmail.com\": " ++ show (asEither success)
-  putStrLn $ "email \"\":              " ++ show (asEither failureAll)
+  putStrLn "Collect all errors (Validation)"
+  putStrLn $ "email \"bob@gmail.com\": " ++ show success
+  putStrLn $ "email \"bobgmail.com\":  " ++ show failureAt
+  putStrLn $ "email \"bob@gmailcom\":  " ++ show failurePeriod
+  putStrLn $ "email \"\":              " ++ show failureAll
+  putStrLn ""
+  putStrLn "Convert to Either (stop at first error via Either's Monad)"
+  putStrLn $ "email \"bob@gmail.com\": " ++ show (success ^. either)
+  putStrLn $ "email \"\":              " ++ show (failureAll ^. either)

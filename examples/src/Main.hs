@@ -1,74 +1,77 @@
 module Main where
 
-import Control.Lens.Getter((^.))
-import Control.Lens.Iso(from)
-import Control.Lens.Review(( # ))
-import Data.Bifoldable(bitraverse_, bimapM_)
-import Data.Bifunctor(second, first)
-import Data.Validation(Validation, _Validation, _Either, _Success, _Failure)
+import Control.Lens (from, (#), (^.))
+import Data.Bifoldable (bitraverse_)
+import Data.Bifunctor (first, second)
+import Data.Validation (Validation, either, foldValidation, _Failure, _Success)
+import Prelude hiding (either)
 
-main ::
-  IO ()
-main =
-  putStrLn "5"
+main :: IO ()
+main = do
+  putStrLn "--- Creating Values ---"
+  print successVal
+  print (failureVal :: Validation Int String)
+
+  putStrLn "\n--- Mapping ---"
+  exMapping
+
+  putStrLn "\n--- Folding ---"
+  exFolding
+
+  putStrLn "\n--- Catamorphism ---"
+  exCatamorphism
+
+  putStrLn "\n--- Converting ---"
+  exConvert
 
 -- Creating Values
 --
 -- Use the _Success and _Failure prisms
 
-successVal ::
-  Validation e String
-successVal =
-  _Success # "A"
+successVal :: Validation String String
+successVal = _Success # "A"
 
-successEither ::
-  Either e String
-successEither =
-  _Success # "A"
-
-failureVal ::
-  Validation Int a
-failureVal =
-  _Failure # 5
+failureVal :: Validation Int a
+failureVal = _Failure # 5
 
 -- | Mapping
 --
--- The validation types are Functors over the success values,
--- and are Bifunctors.
-exMapping ::
-  ()
-exMapping =
-  let -- fmap/second are equivalent, and map successes
-      _ = fmap (++ " B" ) successVal
-      _ = second (++ " B") successVal
-      _ = first (+1) failureVal
-      _ = first (+(1 :: Integer)) successVal -- does nothing
-   in ()
+-- The Validation type is a Functor over success values and a Bifunctor.
+exMapping :: IO ()
+exMapping = do
+  print $ fmap (++ " B") successVal
+  print $ second (++ " B") successVal
+  print $ first (+ 1) (failureVal :: Validation Int String)
 
 -- | Folding
 --
--- The Validation types are Bifoldable and Bitraversable
--- http://hackage.haskell.org/package/bifunctors-4.1.1.1/docs/Data-Bifoldable.html
--- These typeclasses have rich APIs, and would probably replace most usages of
--- pattern matching.
+-- Validation is Bifoldable and Bitraversable.
+exFolding :: IO ()
+exFolding = do
+  bitraverse_ onFailure onSuccess successVal
+  bitraverse_ onFailure onSuccess (failureVal :: Validation Int String)
+  where
+    onFailure v = putStrLn $ "Failure: " ++ show v
+    onSuccess v = putStrLn $ "Success: " ++ v
 
-exFolding ::
-  IO ()
-exFolding =
-  do
-      bitraverse_ onFailure onSuccess successVal
-      -- OR
-      bimapM_ onFailure onSuccess successVal
-        where onFailure _ = putStrLn "Some failure"
-              onSuccess v = putStrLn $ "Good " ++ v
+-- | Catamorphism
+--
+-- foldValidation eliminates a Validation by providing handlers for both cases.
+exCatamorphism :: IO ()
+exCatamorphism = do
+  putStrLn $ foldValidation ("Failed with: " ++) ("Succeeded with: " ++) successVal
+  putStrLn $ foldValidation (\e -> "Failed with: " ++ show e) (\a -> "Succeeded with: " ++ show a) failureVal'
+  where
+    failureVal' :: Validation Int Int
+    failureVal' = _Failure # 42
 
 -- | Converting
--- There are isomorphisms between the validation types, and Either.
--- 'from' will reverse the isomorphism.
-
-exConvert ::
-  IO ()
-exConvert =
-  do
-      print (successVal ^. from _Validation :: Either Int String)
-      print (successEither ^. from _Either :: Validation Int String)
+--
+-- The 'either' iso converts between Validation and Either.
+-- 'from' reverses the direction.
+exConvert :: IO ()
+exConvert = do
+  print (successVal ^. either :: Either String String)
+  print ((failureVal :: Validation Int String) ^. either)
+  print ((Right "hello" :: Either Int String) ^. from either)
+  print ((Left 42 :: Either Int String) ^. from either)
