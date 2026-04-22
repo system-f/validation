@@ -1,0 +1,3 @@
+- ignore: {name: "Monoid law, left identity", within: [Main]}
+- ignore: {name: "Monoid law, right identity", within: [Main]}
+- ignore: {name: "Redundant id", within: [Main]}
