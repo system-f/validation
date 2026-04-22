@@ -29,7 +29,7 @@ executable validation-examples
 
   build-depends:
                       base          >= 4.11 && < 5
-                    , validation    >= 1    && < 1.2
+                    , validation    >= 1    && < 2
                     , lens          >= 4    && < 6
                     , bifunctors    >= 3    && < 6
 
