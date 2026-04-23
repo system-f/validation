@@ -82,8 +82,8 @@ module Data.Validation
     swapValidator,
 
     -- ** Profunctor newtypes
-    Iso'' (..),
-    Prism'' (..),
+    ReifiedIso' (..),
+    ReifiedPrism' (..),
 
     -- ** Example validators
     nonEmptyListIsoValidator',
@@ -938,8 +938,8 @@ swapValidator =
 {-# INLINE swapValidator #-}
 
 -- | A newtype wrapping a monomorphic 'Iso' as a two-parameter profunctor.
--- This allows 'Iso'' to be used as the @p@ parameter in 'Validator'.
-newtype Iso'' a b = Iso'' (Iso a a b b)
+-- This allows 'ReifiedIso' to be used as the @p@ parameter in 'Validator'.
+newtype ReifiedIso' a b = ReifiedIso' (Iso a a b b)
 
 -- | An 'Iso' between a list and a @Validation () (NonEmpty a)@.
 -- The empty list maps to @Failure ()@ and a non-empty list maps to @Success@.
@@ -972,36 +972,36 @@ nonEmptyListIsoValidator' =
     (foldValidation (\() -> []) toList)
 {-# INLINE nonEmptyListIsoValidator' #-}
 
--- | A 'Validator' using 'Iso''' that validates a list is non-empty.
+-- | A 'Validator' using 'ReifiedIso'' that validates a list is non-empty.
 -- The empty list maps to @Failure ()@.
 --
 -- >>> import Control.Lens(view, review)
 -- >>> import Data.List.NonEmpty(NonEmpty(..))
--- >>> let Validator (Iso'' i) = nonEmptyListIsoValidator
+-- >>> let Validator (ReifiedIso' i) = nonEmptyListIsoValidator
 -- >>> view i [1, 2, 3 :: Int]
 -- Success (1 :| [2,3])
 --
--- >>> let Validator (Iso'' i) = nonEmptyListIsoValidator
+-- >>> let Validator (ReifiedIso' i) = nonEmptyListIsoValidator
 -- >>> view i ([] :: [Int])
 -- Failure ()
 --
--- >>> let Validator (Iso'' i) = nonEmptyListIsoValidator
+-- >>> let Validator (ReifiedIso' i) = nonEmptyListIsoValidator
 -- >>> review i (Success (1 :| [2, 3]))
 -- [1,2,3]
 --
--- >>> let Validator (Iso'' i) = nonEmptyListIsoValidator
+-- >>> let Validator (ReifiedIso' i) = nonEmptyListIsoValidator
 -- >>> review i (Failure ())
 -- []
-nonEmptyListIsoValidator :: Validator () Iso'' [a] (NonEmpty a)
+nonEmptyListIsoValidator :: Validator () ReifiedIso' [a] (NonEmpty a)
 nonEmptyListIsoValidator =
   Validator
-    ( Iso''
+    ( ReifiedIso'
         nonEmptyListIsoValidator'
     )
 
 -- | A newtype wrapping a monomorphic 'Prism' as a two-parameter profunctor.
--- This allows 'Prism''' to be used as the @p@ parameter in 'Validator'.
-newtype Prism'' a b = Prism'' (Prism a a b b)
+-- This allows 'ReifiedPrism'' to be used as the @p@ parameter in 'Validator'.
+newtype ReifiedPrism' a b = ReifiedPrism' (Prism a a b b)
 
 -- | A 'Prism' from a list to a @Validation Void (NonEmpty a)@.
 -- The empty list does not match (yields 'Nothing'); a non-empty list matches as @Success@.
@@ -1026,23 +1026,23 @@ nonEmptyListPrismValidator' =
     )
 {-# INLINE nonEmptyListPrismValidator' #-}
 
--- | A 'Validator' using 'Prism''' that validates a list is non-empty.
+-- | A 'Validator' using 'ReifiedPrism'' that validates a list is non-empty.
 -- Uses 'Void' as the error type since the 'Prism' encodes partiality via 'Nothing'.
 --
 -- >>> import Control.Lens((^?), review)
 -- >>> import Data.List.NonEmpty(NonEmpty(..))
--- >>> let Validator (Prism'' p) = nonEmptyListPrismValidator
+-- >>> let Validator (ReifiedPrism' p) = nonEmptyListPrismValidator
 -- >>> [1, 2, 3 :: Int] ^? p
 -- Just (Success (1 :| [2,3]))
 --
--- >>> let Validator (Prism'' p) = nonEmptyListPrismValidator
+-- >>> let Validator (ReifiedPrism' p) = nonEmptyListPrismValidator
 -- >>> ([] :: [Int]) ^? p
 -- Nothing
 --
--- >>> let Validator (Prism'' p) = nonEmptyListPrismValidator
+-- >>> let Validator (ReifiedPrism' p) = nonEmptyListPrismValidator
 -- >>> review p (Success (1 :| [2, 3]))
 -- [1,2,3]
-nonEmptyListPrismValidator :: Validator Void Prism'' [a] (NonEmpty a)
+nonEmptyListPrismValidator :: Validator Void ReifiedPrism' [a] (NonEmpty a)
 nonEmptyListPrismValidator =
   Validator
-    (Prism'' nonEmptyListPrismValidator')
+    (ReifiedPrism' nonEmptyListPrismValidator')
