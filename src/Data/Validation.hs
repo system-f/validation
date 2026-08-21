@@ -89,9 +89,9 @@ module Data.Validation
     ReifiedPrism' (..),
 
     -- ** Example validators
-    nonEmptyListIsoValidator',
+    nonEmptyListIsoValidation,
     nonEmptyListIsoValidator,
-    nonEmptyListPrismValidator',
+    nonEmptyListPrismValidation,
     nonEmptyListPrismValidator,
   )
 where
@@ -1142,31 +1142,31 @@ newtype ReifiedIso' a b = ReifiedIso' (Iso a a b b)
 --
 -- >>> import Control.Lens(view, review)
 -- >>> import Data.List.NonEmpty(NonEmpty(..))
--- >>> view nonEmptyListIsoValidator' [1, 2, 3 :: Int]
+-- >>> view nonEmptyListIsoValidation [1, 2, 3 :: Int]
 -- Success (1 :| [2,3])
 --
--- >>> view nonEmptyListIsoValidator' ([] :: [Int])
+-- >>> view nonEmptyListIsoValidation ([] :: [Int])
 -- Failure ()
 --
--- >>> review nonEmptyListIsoValidator' (Success (1 :| [2, 3]))
+-- >>> review nonEmptyListIsoValidation (Success (1 :| [2, 3]))
 -- [1,2,3]
 --
--- >>> review nonEmptyListIsoValidator' (Failure ())
+-- >>> review nonEmptyListIsoValidation (Failure ())
 -- []
-nonEmptyListIsoValidator' ::
+nonEmptyListIsoValidation ::
   Iso
     [a]
     [a']
     (Validation () (NonEmpty a))
     (Validation () (NonEmpty a'))
-nonEmptyListIsoValidator' =
+nonEmptyListIsoValidation =
   iso
     ( \case
         [] -> Failure ()
         h : t -> Success (h :| t)
     )
     (foldValidation (\() -> []) toList)
-{-# INLINE nonEmptyListIsoValidator' #-}
+{-# INLINE nonEmptyListIsoValidation #-}
 
 -- | A 'Validator' using 'ReifiedIso'' that validates a list is non-empty.
 -- The empty list maps to @Failure ()@.
@@ -1192,7 +1192,7 @@ nonEmptyListIsoValidator :: Validator () ReifiedIso' [a] (NonEmpty a)
 nonEmptyListIsoValidator =
   Validator
     ( ReifiedIso'
-        nonEmptyListIsoValidator'
+        nonEmptyListIsoValidation
     )
 
 -- | A newtype wrapping a monomorphic 'Prism' as a two-parameter profunctor.
@@ -1204,23 +1204,23 @@ newtype ReifiedPrism' a b = ReifiedPrism' (Prism a a b b)
 --
 -- >>> import Control.Lens((^?), review)
 -- >>> import Data.List.NonEmpty(NonEmpty(..))
--- >>> [1, 2, 3 :: Int] ^? nonEmptyListPrismValidator'
+-- >>> [1, 2, 3 :: Int] ^? nonEmptyListPrismValidation
 -- Just (Success (1 :| [2,3]))
 --
--- >>> ([] :: [Int]) ^? nonEmptyListPrismValidator'
+-- >>> ([] :: [Int]) ^? nonEmptyListPrismValidation
 -- Nothing
 --
--- >>> review nonEmptyListPrismValidator' (Success (1 :| [2, 3]))
+-- >>> review nonEmptyListPrismValidation (Success (1 :| [2, 3]))
 -- [1,2,3]
-nonEmptyListPrismValidator' :: Prism [a] [a] (Validation err (NonEmpty a)) (Validation Void (NonEmpty a))
-nonEmptyListPrismValidator' =
+nonEmptyListPrismValidation :: Prism [a] [a] (Validation err (NonEmpty a)) (Validation Void (NonEmpty a))
+nonEmptyListPrismValidation =
   prism'
     (foldValidation absurd toList)
     ( \case
         [] -> Nothing
         h : t -> Just (Success (h :| t))
     )
-{-# INLINE nonEmptyListPrismValidator' #-}
+{-# INLINE nonEmptyListPrismValidation #-}
 
 -- | A 'Validator' using 'ReifiedPrism'' that validates a list is non-empty.
 -- Uses 'Void' as the error type since the 'Prism' encodes partiality via 'Nothing'.
@@ -1241,4 +1241,4 @@ nonEmptyListPrismValidator' =
 nonEmptyListPrismValidator :: Validator Void ReifiedPrism' [a] (NonEmpty a)
 nonEmptyListPrismValidator =
   Validator
-    (ReifiedPrism' nonEmptyListPrismValidator')
+    (ReifiedPrism' nonEmptyListPrismValidation)
