@@ -51,8 +51,9 @@ description:
   The @Applicative@ instance accumulates errors in parallel (using @Semigroup@),
   while @Category@ composition short-circuits on @Failure@ (like monadic bind).
   .
-  The library also provides profunctor newtype wrappers (@Iso''@, @Prism''@) that
-  allow @Validator@ to be parameterised over monomorphic isos and prisms.
+  The library also provides profunctor newtype wrappers (@ReifiedIso'@,
+  @ReifiedPrism'@) that allow @Validator@ to be parameterised over monomorphic
+  isos and prisms.
 
 homepage:           https://github.com/system-f/validation
 bug-reports:        https://github.com/system-f/validation/issues
@@ -80,6 +81,7 @@ library
                     , lens          >= 4.0.5  && < 6
                     , profunctors   >= 5      && < 6
                     , tagged        >= 0.8    && < 1
+                    , transformers  >= 0.5    && < 0.7
 
   ghc-options:
                     -Wall

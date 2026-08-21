@@ -44,5 +44,6 @@ Instances include `Functor`, `Apply`, `Applicative`, `Alt`, `Selective`,
 The `Applicative` instance accumulates errors in parallel (using `Semigroup`),
 while `Category` composition short-circuits on `Failure` (like monadic bind).
 
-The library also provides profunctor newtype wrappers (`Iso''`, `Prism''`) that
-allow `Validator` to be parameterised over monomorphic isos and prisms.
+The library also provides profunctor newtype wrappers (`ReifiedIso'`,
+`ReifiedPrism'`) that allow `Validator` to be parameterised over monomorphic
+isos and prisms.
