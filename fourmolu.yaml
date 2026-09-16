@@ -1,0 +1,13 @@
+indentation: 2
+comma-style: leading
+record-brace-space: false
+indent-wheres: false
+diff-friendly-import-export: true
+respectful: false
+haddock-style: multi-line
+newlines-between-decls: 1
+column-limit: none
+
+fixities:
+  - "infixl 4 <.>"
+  - "infixl 3 <!>"

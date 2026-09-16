@@ -1,17 +1,23 @@
+import Control.Monad (unless)
 import System.Exit (ExitCode (..), exitFailure)
 import System.Process (rawSystem)
 
 main :: IO ()
 main = do
-  exit <-
-    rawSystem
-      "cabal"
-      [ "exec",
-        "--",
-        "doctest",
-        "-isrc",
-        "src/Data/Validation.hs"
+  results <-
+    mapM
+      ( \f ->
+          rawSystem
+            "cabal"
+            [ "exec"
+            , "--"
+            , "doctest"
+            , "-isrc"
+            , f
+            ]
+      )
+      [ "src/Data/Validation/Validation.hs"
+      , "src/Data/Validation/ValidationMonad.hs"
+      , "src/Data/Validation/Validator.hs"
       ]
-  case exit of
-    ExitSuccess -> pure ()
-    ExitFailure _ -> exitFailure
+  unless (all (== ExitSuccess) results) exitFailure

@@ -20,30 +20,31 @@ functor that is not a monad."
 The library provides:
 
 * Classy optics (`GetValidation`, `HasValidation`, `ReviewValidation`,
-  `AsValidation`, and corresponding classes for `Failure` and `Success`)
-  following the conventions of `makeClassy` and `makeClassyPrisms` from `lens`.
+  `AsValidation`) following the conventions of `makeClassy` and
+  `makeClassyPrisms` from `lens`.
 * Polymorphic prisms (`__Failure`, `__Success`) for type-changing operations.
 * Isomorphisms to `Either` and `(Bool, a)`.
 
-## `Validator`
+## `ValidationMonadT`
 
-The `Validator` newtype is a profunctor transformer:
+`ValidationMonadT err m a` is a monad transformer wrapping `m (Validation err a)`.
+Unlike `Validation`, it has short-circuiting `Applicative`, `Bind`, `Monad`,
+and `MonadError` instances.
 
-```haskell
-newtype Validator e p x a = Validator (p x (Validation e a))
-```
+`ValidationMonad err a` is a type alias for `ValidationMonadT err Identity a`.
 
-`Validator e (->) x a` is isomorphic to `x -> Validation e a`. The profunctor
-parameter `p` generalises this to other optic-like contexts such as `Tagged`,
-`Iso`, and `Prism`.
+## Validators
 
-Instances include `Functor`, `Apply`, `Applicative`, `Alt`, `Selective`,
-`Profunctor`, `Strong`, `Choice`, `Semigroupoid`, `Category`, `Arrow`,
-`ArrowApply`, `ArrowChoice`, and `Wrapped`.
+The library provides four validator newtypes, each wrapping a validation
+function with a different type parameter order to enable different class
+instances:
 
-The `Applicative` instance accumulates errors in parallel (using `Semigroup`),
-while `Category` composition short-circuits on `Failure` (like monadic bind).
+| Type | Wraps | Key instances |
+|------|-------|---------------|
+| `Validator x err a` | `x -> Validation err a` | `Bifunctor`, accumulating `Applicative` |
+| `ValidatorProfunctor err x a` | `x -> Validation err a` | `Profunctor`, accumulating `Applicative` |
+| `ValidatorMonadT x err f a` | `x -> ValidationMonadT err f a` | `Monad`, `MonadTrans`, `BindTrans` |
+| `ValidatorMonadProfunctorT err f x a` | `x -> ValidationMonadT err f a` | `Profunctor`, `Monad`, `Category`, `Arrow` |
 
-The library also provides profunctor newtype wrappers (`ReifiedIso'`,
-`ReifiedPrism'`) that allow `Validator` to be parameterised over monomorphic
-isos and prisms.
+All four are isomorphic and have cross-type optics instances for converting
+between them.

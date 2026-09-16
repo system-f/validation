@@ -2,14 +2,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import Control.Applicative (liftA3)
-import Control.Category (id, (.))
-import Control.Lens (Wrapped (_Wrapped'), from, review, view, (#), (^.), (^?))
+import Control.Lens (from, review, (#), (^.), (^?))
 import Control.Monad (join, unless)
 import Data.Bifunctor (bimap)
 import Data.Bifunctor.Swap (swap)
 import Data.Functor.Alt (Alt ((<!>)))
 import Data.Functor.Apply (Apply ((<.>)))
-import Data.Semigroupoid (Semigroupoid (o))
 import Data.Validation
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -28,49 +26,41 @@ main = do
     checkParallel $
       Group
         "Validation"
-        [ ("prop_semigroup_assoc", prop_semigroup_assoc),
-          ("prop_monoid_assoc", prop_monoid_assoc),
-          ("prop_monoid_left_id", prop_monoid_left_id),
-          ("prop_monoid_right_id", prop_monoid_right_id),
-          ("prop_functor_id", prop_functor_id),
-          ("prop_functor_compose", prop_functor_compose),
-          ("prop_applicative_id", prop_applicative_id),
-          ("prop_applicative_homomorphism", prop_applicative_homomorphism),
-          ("prop_apply_compose", prop_apply_compose),
-          ("prop_alt_assoc", prop_alt_assoc),
-          ("prop_alt_left_catch", prop_alt_left_catch),
-          ("prop_bifunctor_id", prop_bifunctor_id),
-          ("prop_bifunctor_compose", prop_bifunctor_compose),
-          ("prop_foldValidation_failure", prop_foldValidation_failure),
-          ("prop_foldValidation_success", prop_foldValidation_success),
-          ("prop_either_roundtrip", prop_either_roundtrip),
-          ("prop_either_roundtrip_inv", prop_either_roundtrip_inv),
-          ("prop_codiagonal_roundtrip", prop_codiagonal_roundtrip),
-          ("prop_failure_prism_review_preview", prop_failure_prism_review_preview),
-          ("prop_success_prism_review_preview", prop_success_prism_review_preview),
-          ("prop_failure_prism_miss", prop_failure_prism_miss),
-          ("prop_success_prism_miss", prop_success_prism_miss),
-          ("prop_poly_failure_prism", prop_poly_failure_prism),
-          ("prop_poly_success_prism", prop_poly_success_prism),
-          ("prop_swap_failure", prop_swap_failure),
-          ("prop_swap_success", prop_swap_success),
-          ("prop_swap_involution", prop_swap_involution),
-          ("prop_validator_functor_id", prop_validator_functor_id),
-          ("prop_validator_category_left_id", prop_validator_category_left_id),
-          ("prop_validator_category_right_id", prop_validator_category_right_id),
-          ("prop_validator_category_assoc", prop_validator_category_assoc),
-          ("prop_validator_semigroupoid_assoc", prop_validator_semigroupoid_assoc),
-          ("prop_validator_apply_accumulates", prop_validator_apply_accumulates),
-          ("prop_validator_alt_accumulates", prop_validator_alt_accumulates),
-          ("prop_validator_alt_left_success", prop_validator_alt_left_success),
-          ("prop_either_reviewFailure", prop_either_reviewFailure),
-          ("prop_either_asFailure_hit", prop_either_asFailure_hit),
-          ("prop_either_asFailure_miss", prop_either_asFailure_miss),
-          ("prop_either_reviewSuccess", prop_either_reviewSuccess),
-          ("prop_either_asSuccess_hit", prop_either_asSuccess_hit),
-          ("prop_either_asSuccess_miss", prop_either_asSuccess_miss),
-          ("prop_either_failure_roundtrip", prop_either_failure_roundtrip),
-          ("prop_either_success_roundtrip", prop_either_success_roundtrip)
+        [ ("prop_semigroup_assoc", prop_semigroup_assoc)
+        , ("prop_monoid_assoc", prop_monoid_assoc)
+        , ("prop_monoid_left_id", prop_monoid_left_id)
+        , ("prop_monoid_right_id", prop_monoid_right_id)
+        , ("prop_functor_id", prop_functor_id)
+        , ("prop_functor_compose", prop_functor_compose)
+        , ("prop_applicative_id", prop_applicative_id)
+        , ("prop_applicative_homomorphism", prop_applicative_homomorphism)
+        , ("prop_apply_compose", prop_apply_compose)
+        , ("prop_alt_assoc", prop_alt_assoc)
+        , ("prop_alt_left_catch", prop_alt_left_catch)
+        , ("prop_bifunctor_id", prop_bifunctor_id)
+        , ("prop_bifunctor_compose", prop_bifunctor_compose)
+        , ("prop_foldValidation_failure", prop_foldValidation_failure)
+        , ("prop_foldValidation_success", prop_foldValidation_success)
+        , ("prop_either_roundtrip", prop_either_roundtrip)
+        , ("prop_either_roundtrip_inv", prop_either_roundtrip_inv)
+        , ("prop_codiagonal_roundtrip", prop_codiagonal_roundtrip)
+        , ("prop_failure_prism_review_preview", prop_failure_prism_review_preview)
+        , ("prop_success_prism_review_preview", prop_success_prism_review_preview)
+        , ("prop_failure_prism_miss", prop_failure_prism_miss)
+        , ("prop_success_prism_miss", prop_success_prism_miss)
+        , ("prop_poly_failure_prism", prop_poly_failure_prism)
+        , ("prop_poly_success_prism", prop_poly_success_prism)
+        , ("prop_swap_failure", prop_swap_failure)
+        , ("prop_swap_success", prop_swap_success)
+        , ("prop_swap_involution", prop_swap_involution)
+        , ("prop_either_reviewFailure", prop_either_reviewFailure)
+        , ("prop_either_asFailure_hit", prop_either_asFailure_hit)
+        , ("prop_either_asFailure_miss", prop_either_asFailure_miss)
+        , ("prop_either_reviewSuccess", prop_either_reviewSuccess)
+        , ("prop_either_asSuccess_hit", prop_either_asSuccess_hit)
+        , ("prop_either_asSuccess_miss", prop_either_asSuccess_miss)
+        , ("prop_either_failure_roundtrip", prop_either_failure_roundtrip)
+        , ("prop_either_success_roundtrip", prop_either_success_roundtrip)
         ]
 
   unless result exitFailure
@@ -91,24 +81,6 @@ genStrings = Gen.list (Range.linear 1 10) genString
 
 testGen :: Gen (Validation [String] Int)
 testGen = genValidation genStrings genInt
-
-runV :: Validator' e x a -> x -> Validation e a
-runV = view _Wrapped'
-
-validators :: [Validator' [String] Int Int]
-validators =
-  [ Validator (Success . (+ 1)),
-    Validator (Success . (* 2)),
-    Validator (Success . negate),
-    Validator (\_ -> Failure ["e1"]),
-    Validator (\_ -> Failure ["e2"])
-  ]
-
-genValidatorIdx :: Gen Int
-genValidatorIdx = Gen.int (Range.constant 0 (length validators - 1))
-
-pickValidator :: Int -> Validator' [String] Int Int
-pickValidator i = validators !! i
 
 -- Semigroup / Monoid
 
@@ -312,86 +284,6 @@ prop_swap_involution =
   property $ do
     x <- forAll testGen
     (swap (swap x)) === x
-
--- Validator: Functor
-
-prop_validator_functor_id :: Property
-prop_validator_functor_id =
-  property $ do
-    x <- forAll genInt
-    i <- forAll genValidatorIdx
-    let v = pickValidator i
-    runV (fmap Prelude.id v) x === runV v x
-
--- Validator: Category
-
-prop_validator_category_left_id :: Property
-prop_validator_category_left_id =
-  property $ do
-    x <- forAll genInt
-    i <- forAll genValidatorIdx
-    let v = pickValidator i
-    runV (id . v) x === runV v x
-
-prop_validator_category_right_id :: Property
-prop_validator_category_right_id =
-  property $ do
-    x <- forAll genInt
-    i <- forAll genValidatorIdx
-    let v = pickValidator i
-    runV (v . id) x === runV v x
-
-prop_validator_category_assoc :: Property
-prop_validator_category_assoc =
-  property $ do
-    x <- forAll genInt
-    fi <- forAll genValidatorIdx
-    gi <- forAll genValidatorIdx
-    hi <- forAll genValidatorIdx
-    let f = pickValidator fi
-        g = pickValidator gi
-        h = pickValidator hi
-    runV ((f . g) . h) x === runV (f . (g . h)) x
-
--- Validator: Semigroupoid
-
-prop_validator_semigroupoid_assoc :: Property
-prop_validator_semigroupoid_assoc =
-  property $ do
-    x <- forAll genInt
-    fi <- forAll genValidatorIdx
-    gi <- forAll genValidatorIdx
-    hi <- forAll genValidatorIdx
-    let f = pickValidator fi
-        g = pickValidator gi
-        h = pickValidator hi
-    runV ((f `o` g) `o` h) x === runV (f `o` (g `o` h)) x
-
--- Validator: Apply / Alt accumulate errors
-
-prop_validator_apply_accumulates :: Property
-prop_validator_apply_accumulates =
-  property $ do
-    x <- forAll genInt
-    let f = Validator (\_ -> Failure ["e1"]) :: Validator' [String] Int Int
-        g = Validator (\_ -> Failure ["e2"]) :: Validator' [String] Int Int
-    runV (fmap const f <.> g) x === Failure ["e1", "e2"]
-
-prop_validator_alt_accumulates :: Property
-prop_validator_alt_accumulates =
-  property $ do
-    x <- forAll genInt
-    let f = Validator (\_ -> Failure ["e1"]) :: Validator' [String] Int Int
-        g = Validator (\_ -> Failure ["e2"]) :: Validator' [String] Int Int
-    runV (f <!> g) x === Failure ["e1", "e2"]
-
-prop_validator_alt_left_success :: Property
-prop_validator_alt_left_success =
-  property $ do
-    x <- forAll genInt
-    let f = Validator (Success . (+ 1)) :: Validator' [String] Int Int
-        g = Validator (\_ -> Failure ["e2"]) :: Validator' [String] Int Int
-    runV (f <!> g) x === Success (x + 1)
 
 -- Either instances: ReviewFailure, AsFailure, ReviewSuccess, AsSuccess
 
