@@ -98,7 +98,8 @@ jobs:
           key: ${{ runner.os }}-tests-${{ hashFiles('cabal.project.freeze') }}
 
       # The doctest suite runs the doctest executable, which must be built with the same GHC.
-      - run: cabal install doctest --install-method=copy --overwrite-policy=always
+      # --ignore-project, because inside the project "doctest" names our own test suite.
+      - run: cabal install doctest --ignore-project --install-method=copy --overwrite-policy=always
       - run: cabal test
 
 
