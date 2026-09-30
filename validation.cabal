@@ -45,12 +45,18 @@ description:
   Four validator newtypes wrap a validation function with different type
   parameter orders, enabling different class instances:
   .
-  * @Validator x err a@ — @Bifunctor@, accumulating @Applicative@
+  * @Validator x err a@ — @Bifunctor@, accumulating @Applicative@, @Either@-like @Alt@
   * @ValidatorProfunctor err x a@ — @Profunctor@, accumulating @Applicative@
   * @ValidatorMonadT x err f a@ — @Monad@, @MonadTrans@, @BindTrans@
   * @ValidatorMonadProfunctorT err f x a@ — @Profunctor@, @Monad@, @Category@, @Arrow@
   .
   All four are isomorphic and have cross-type optics instances.
+  .
+  @Validator@ is the odd one out in its @Alt@ instance. For the other three
+  validators, @\<!\>@ accumulates errors when both sides fail. For @Validator@,
+  @\<!\>@ behaves like @Either@: the first success wins, otherwise the second
+  failure is returned. @Validator@ has no @Plus@ or @Alternative@ instance, and
+  its @\<\>@ still accumulates errors.
 
 homepage:           https://github.com/system-f/validation
 bug-reports:        https://github.com/system-f/validation/issues

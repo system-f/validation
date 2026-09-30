@@ -9,21 +9,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wall #-}
 
--- \$setup
--- >>> import Data.Functor.Identity(Identity(..))
--- >>> import Data.Validation.Validation(Validation(..))
--- >>> import Data.Validation.ValidationMonad
--- >>> import Control.Lens(view, _Wrapped', review, (#), (^?), from)
--- >>> import Data.Functor.Alt(Alt((<!>)))
--- >>> import Data.Functor.Apply(Apply((<.>)))
--- >>> import Data.Functor.Extend(Extend(extended))
--- >>> import Data.Functor.Classes(Eq1(liftEq), Ord1(liftCompare))
--- >>> import Control.Monad.Error.Class(MonadError(throwError, catchError))
--- >>> import Control.Monad.Trans.Class(MonadTrans(lift))
--- >>> import Control.DeepSeq(rnf)
--- >>> import Data.Functor.Plus(Plus(zero))
--- >>> :set -XNoMonomorphismRestriction -w
-
 {- | A monad transformer wrapping @m (Validation err a)@ with short-circuiting
 'Applicative' and 'Monad' instances, unlike 'Validation' which accumulates errors.
 -}
@@ -48,8 +33,8 @@ module Data.Validation.ValidationMonad (
 
 import Control.Applicative (Alternative (empty, (<|>)))
 import Control.DeepSeq (NFData (rnf))
-import Control.Lens (Getter, Lens', Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), from, prism', unto)
-import Control.Lens.Iso (Iso, iso)
+import Control.Lens (Getter, Lens', Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), from, unto)
+import Control.Lens.Iso (Iso, Iso', iso)
 import Control.Monad (MonadPlus, ap)
 import Control.Monad.Cont.Class (MonadCont (callCC))
 import Control.Monad.Error.Class (MonadError (catchError, throwError))
@@ -60,7 +45,6 @@ import Control.Monad.State.Class (MonadState (get, put, state))
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Writer.Class (MonadWriter (listen, pass, tell, writer))
 import Control.Selective (Selective (select), selectM)
-import qualified Data.Either as Either
 import Data.Functor.Alt (Alt ((<!>)))
 import Data.Functor.Apply (Apply ((<.>)))
 import Data.Functor.Bind (Bind ((>>-)))
@@ -70,7 +54,24 @@ import Data.Functor.Extend (Extend (extended))
 import Data.Functor.Identity (Identity (..))
 import Data.Functor.Plus (Plus (zero))
 import Data.Validation.Validation (AsValidation (..), GetValidation (..), HasValidation (..), ReviewValidation (..), Validation (..), foldValidation)
+import qualified Data.Validation.Validation as Validation
 import GHC.Generics (Generic)
+
+{- $setup
+>>> import Data.Functor.Identity(Identity(..))
+>>> import Data.Validation.Validation(Validation(..))
+>>> import Data.Validation.ValidationMonad
+>>> import Control.Lens(view, _Wrapped', review, (#), (^?), from)
+>>> import Data.Functor.Alt(Alt((<!>)))
+>>> import Data.Functor.Apply(Apply((<.>)))
+>>> import Data.Functor.Extend(Extend(extended))
+>>> import Data.Functor.Classes(Eq1(liftEq), Ord1(liftCompare))
+>>> import Control.Monad.Error.Class(MonadError(throwError, catchError))
+>>> import Control.Monad.Trans.Class(MonadTrans(lift))
+>>> import Control.DeepSeq(rnf)
+>>> import Data.Functor.Plus(Plus(zero))
+>>> :set -XNoMonomorphismRestriction -w
+-}
 
 {- | A monad transformer wrapping @m (Validation err a)@.
 
@@ -214,7 +215,7 @@ instance (Monad m) => Monad (ValidationMonadT err m) where
       Success a -> let ValidationMonadT n = k a in n
   {-# INLINE (>>=) #-}
 
-instance (Monad m, MonadFail m) => MonadFail (ValidationMonadT err m) where
+instance (MonadFail m) => MonadFail (ValidationMonadT err m) where
   fail = liftValidationMonadT . fail
   {-# INLINE fail #-}
 
@@ -425,7 +426,7 @@ class ReviewValidationMonadT s err m a | s -> err m a where
   reviewValidationMonadT :: Review s (ValidationMonadT err m a)
 
 instance ReviewValidationMonadT (ValidationMonadT err m a) err m a where
-  reviewValidationMonadT = unto id
+  reviewValidationMonadT = id
   {-# INLINE reviewValidationMonadT #-}
 
 -- | Class for types that have a 'Prism'' to a 'ValidationMonadT'.
@@ -448,6 +449,11 @@ Success 1
 validationMonad :: Iso (Validation err a) (Validation err' a') (ValidationMonad err a) (ValidationMonad err' a')
 validationMonad = iso (ValidationMonadT . pure) (\(ValidationMonadT (Identity v)) -> v)
 {-# INLINE validationMonad #-}
+
+-- Isomorphism between @Either err a@ and @ValidationMonad err a@.
+eitherValidationMonad :: Iso' (Either err a) (ValidationMonad err a)
+eitherValidationMonad = from Validation.either . validationMonad
+{-# INLINE eitherValidationMonad #-}
 
 {- |
 >>> import Control.Lens(view)
@@ -473,7 +479,7 @@ instance HasValidationMonadT (Validation err a) err Identity a where
 Success 1
 -}
 instance ReviewValidationMonadT (Validation err a) err Identity a where
-  reviewValidationMonadT = unto (\(ValidationMonadT (Identity v)) -> v)
+  reviewValidationMonadT = validationMonad
   {-# INLINE reviewValidationMonadT #-}
 
 {- |
@@ -482,10 +488,7 @@ instance ReviewValidationMonadT (Validation err a) err Identity a where
 Just (ValidationMonadT (Identity (Success 1)))
 -}
 instance AsValidationMonadT (Validation err a) err Identity a where
-  _ValidationMonadT =
-    prism'
-      (\(ValidationMonadT (Identity v)) -> v)
-      (Just . ValidationMonadT . pure)
+  _ValidationMonadT = validationMonad
   {-# INLINE _ValidationMonadT #-}
 
 {- |
@@ -506,8 +509,13 @@ instance HasValidation (ValidationMonad err a) err a where
   validation = from validationMonad
   {-# INLINE validation #-}
 
-instance ReviewValidation (ValidationMonad err a) err a where
-  reviewValidation = unto (ValidationMonadT . Identity)
+{- |
+>>> import Control.Lens(review)
+>>> review reviewValidation (Success 1 :: Validation String Int) :: ValidationMonadT String [] Int
+ValidationMonadT [Success 1]
+-}
+instance (Applicative m) => ReviewValidation (ValidationMonadT err m a) err a where
+  reviewValidation = unto (ValidationMonadT . pure)
   {-# INLINE reviewValidation #-}
 
 {- |
@@ -528,7 +536,7 @@ ValidationMonadT (Identity (Failure "err"))
 ValidationMonadT (Identity (Success 1))
 -}
 instance GetValidationMonadT (Either err a) err Identity a where
-  getValidationMonadT = iso (ValidationMonadT . Identity . Either.either Failure Success) (\(ValidationMonadT (Identity v)) -> foldValidation Left Right v)
+  getValidationMonadT = eitherValidationMonad
   {-# INLINE getValidationMonadT #-}
 
 {- |
@@ -540,7 +548,7 @@ ValidationMonadT (Identity (Failure "err"))
 Right 2
 -}
 instance HasValidationMonadT (Either err a) err Identity a where
-  validationMonadT = iso (ValidationMonadT . Identity . Either.either Failure Success) (\(ValidationMonadT (Identity v)) -> foldValidation Left Right v)
+  validationMonadT = eitherValidationMonad
   {-# INLINE validationMonadT #-}
 
 {- |
@@ -552,7 +560,7 @@ Right 1
 Left "err"
 -}
 instance ReviewValidationMonadT (Either err a) err Identity a where
-  reviewValidationMonadT = unto (\(ValidationMonadT (Identity v)) -> foldValidation Left Right v)
+  reviewValidationMonadT = eitherValidationMonad
   {-# INLINE reviewValidationMonadT #-}
 
 {- |
@@ -564,5 +572,5 @@ Just (ValidationMonadT (Identity (Failure "err")))
 Just (ValidationMonadT (Identity (Success 1)))
 -}
 instance AsValidationMonadT (Either err a) err Identity a where
-  _ValidationMonadT = iso (ValidationMonadT . Identity . Either.either Failure Success) (\(ValidationMonadT (Identity v)) -> foldValidation Left Right v)
+  _ValidationMonadT = eitherValidationMonad
   {-# INLINE _ValidationMonadT #-}

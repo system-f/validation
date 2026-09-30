@@ -41,10 +41,17 @@ instances:
 
 | Type | Wraps | Key instances |
 |------|-------|---------------|
-| `Validator x err a` | `x -> Validation err a` | `Bifunctor`, accumulating `Applicative` |
+| `Validator x err a` | `x -> Validation err a` | `Bifunctor`, accumulating `Applicative`, `Either`-like `Alt` |
 | `ValidatorProfunctor err x a` | `x -> Validation err a` | `Profunctor`, accumulating `Applicative` |
 | `ValidatorMonadT x err f a` | `x -> ValidationMonadT err f a` | `Monad`, `MonadTrans`, `BindTrans` |
 | `ValidatorMonadProfunctorT err f x a` | `x -> ValidationMonadT err f a` | `Profunctor`, `Monad`, `Category`, `Arrow` |
 
 All four are isomorphic and have cross-type optics instances for converting
 between them.
+
+`Validator` is the odd one out in its `Alt` instance. For `Validation` and the
+other three validators, `<!>` accumulates errors when both sides fail. For
+`Validator`, `<!>` behaves like `Either`: the first success wins, otherwise
+the second failure is returned, and no `Semigroup` constraint is needed. For
+this reason `Validator` has no `Plus` or `Alternative` instance. Its `<>` still
+accumulates errors, so use `<>` when you want accumulation.

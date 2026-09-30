@@ -1,3 +1,15 @@
+1.3.2
+
+* Change the Extend instances for all four validators to keep failures,
+  like Validation: for each input, extended fails where the validator
+  fails, rather than always succeeding. The constraint on the monadic
+  validators is relaxed to Functor
+* Generalise the ReviewValidation instance for ValidationMonad to
+  ValidationMonadT over any Applicative
+* Relax constraints: Choice for ValidatorProfunctor no longer requires
+  Semigroup, Sieve for ValidatorMonadProfunctorT requires only Functor,
+  and the MonadFail instances no longer require a redundant Monad
+
 1.3.1
 
 * Change the Alt instance for Validator to be like Either: the first

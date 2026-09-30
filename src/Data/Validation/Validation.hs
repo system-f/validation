@@ -9,20 +9,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
 
--- \$setup
--- >>> import Prelude hiding (either, id, (.))
--- >>> import Control.Lens((^?), (#), review, view, from, set)
--- >>> import Data.Functor.Alt(Alt((<!>)))
--- >>> import Data.Functor.Apply(Apply((<.>)))
--- >>> import Control.DeepSeq(rnf)
--- >>> import Control.Category(id, (.))
--- >>> import Control.Selective(Selective(select))
--- >>> import Data.Bifunctor(Bifunctor(bimap))
--- >>> import Data.Bifoldable(Bifoldable(bifoldr))
--- >>> import Data.Bitraversable(Bitraversable(bitraverse))
--- >>> import Data.Bifunctor.Swap(Swap(swap))
--- >>> :set -XNoMonomorphismRestriction -w
-
 -- | A data type similar to @Data.Either@ that accumulates failures.
 module Data.Validation.Validation (
   -- * Data type
@@ -74,6 +60,21 @@ import Data.Semigroup.Traversable.Class (Bitraversable1 (bitraverse1))
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic, Generic1)
 import Prelude hiding (either, id, (.))
+
+{- $setup
+>>> import Prelude hiding (either, id, (.))
+>>> import Control.Lens((^?), (#), review, view, from, set)
+>>> import Data.Functor.Alt(Alt((<!>)))
+>>> import Data.Functor.Apply(Apply((<.>)))
+>>> import Control.DeepSeq(rnf)
+>>> import Control.Category(id, (.))
+>>> import Control.Selective(Selective(select))
+>>> import Data.Bifunctor(Bifunctor(bimap))
+>>> import Data.Bifoldable(Bifoldable(bifoldr))
+>>> import Data.Bitraversable(Bitraversable(bitraverse))
+>>> import Data.Bifunctor.Swap(Swap(swap))
+>>> :set -XNoMonomorphismRestriction -w
+-}
 
 {- | A @Validation@ is either a value of the type @err@ or @a@, similar to 'Either'. However,
 the 'Applicative' instance for @Validation@ /accumulates/ errors using a 'Semigroup' on @err@.

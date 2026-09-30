@@ -75,8 +75,8 @@ module Data.Validation.Validator (
 import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Arrow (Arrow (arr, first), ArrowApply (app), ArrowChoice (left, right), ArrowPlus ((<+>)), ArrowZero (zeroArrow))
 import Control.Category (Category (..))
-import Control.Lens (APrism, Getter, Lens', Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), matching, review, unto)
-import Control.Lens.Iso (iso)
+import Control.Lens (APrism, Getter, Lens', Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), from, matching, review, unto, view)
+import Control.Lens.Iso (Iso', iso)
 import Control.Monad (MonadPlus, ap, (>=>))
 import Control.Monad.Cont.Class (MonadCont (callCC))
 import Control.Monad.Error.Class (MonadError (catchError, throwError))
@@ -102,7 +102,7 @@ import Data.Profunctor.Traversing (Traversing (traverse', wander))
 import Data.Semigroupoid (Semigroupoid (o))
 import Data.Validation.Validation (Validation (..))
 import qualified Data.Validation.Validation as Validation
-import Data.Validation.ValidationMonad (ValidationMonadT (..), liftValidationMonadT)
+import Data.Validation.ValidationMonad (ValidationMonadT (..), liftValidationMonadT, validationMonad)
 import GHC.Generics (Generic)
 import Prelude hiding (id, (.))
 
@@ -150,6 +150,11 @@ import Prelude hiding (id, (.))
 
 {- | A validator that applies a function @x -> Validation err a@.
 The 'Applicative' instance /accumulates/ errors using 'Semigroup', like 'Validation'.
+
+Unlike 'Validation' and the other validators, the 'Alt' instance does /not/
+accumulate errors: it behaves like 'Either', returning the first success, or
+otherwise the second failure. As a consequence there are no 'Plus' or
+'Alternative' instances, and '<>' (which accumulates) differs from '<!>'.
 
 >>> let Validator f = Validator (\x -> if x > 0 then Success x else Failure ["not positive"]) :: Validator Int [String] Int
 >>> f 5
@@ -220,6 +225,12 @@ instance (Semigroup err) => Applicative (Validator x err) where
 
 {- | First success wins, like 'Either'; if both fail, the second failure is returned.
 Errors are not accumulated, so no 'Semigroup' constraint is required.
+
+This differs from the 'Alt' instances for 'Validation', 'ValidatorProfunctor',
+'ValidatorMonadT' and 'ValidatorMonadProfunctorT', which all accumulate errors
+when both sides fail. Converting a 'Validator' to one of those types (for
+example with 'validatorProfunctor') therefore changes the meaning of '<!>'.
+Use '<>' to accumulate errors from two 'Validator's.
 
 >>> import Data.Functor.Alt(Alt((<!>)))
 >>> let Validator f = (Validator (\_ -> Success 1) :: Validator Int [String] Int) <!> Validator (\_ -> Success 2)
@@ -293,17 +304,28 @@ instance Swap (Validator x) where
   swap (Validator f) = Validator (swap . f)
   {-# INLINE swap #-}
 
-{- |
+{- | Like 'Validation', a failure is kept: for each input, the result fails
+where the validator fails, and otherwise succeeds with @f@ applied to the validator.
+
 >>> import Data.Functor.Extend(Extend(extended))
 >>> let Validator f = extended (\_ -> 42) (Validator (\_ -> Success 1) :: Validator Int [String] Int)
 >>> f 0
 Success 42
+
+>>> let Validator f = extended (\_ -> 42) (Validator (\x -> if x > 0 then Success x else Failure ["not positive"]) :: Validator Int [String] Int)
+>>> f 5
+Success 42
+
+>>> f (-1)
+Failure ["not positive"]
 -}
 instance Extend (Validator x err) where
-  extended f w@(Validator _) = Validator (\_ -> Success (f w))
+  extended f w@(Validator g) = Validator (\x -> f w <$ g x)
   {-# INLINE extended #-}
 
-{- |
+{- | First success wins; two failures accumulate. Unlike '<!>' for 'Validator',
+this requires 'Semigroup' on @err@.
+
 >>> let Validator f = (Validator (\_ -> Failure ["e1"]) :: Validator Int [String] Int) <> Validator (\_ -> Failure ["e2"])
 >>> f 0
 Failure ["e1","e2"]
@@ -358,7 +380,7 @@ class ReviewValidator s x err a | s -> x err a where
   reviewValidator :: Review s (Validator x err a)
 
 instance ReviewValidator (Validator x err a) x err a where
-  reviewValidator = unto id
+  reviewValidator = id
   {-# INLINE reviewValidator #-}
 
 -- | Class for types that have a 'Prism'' to a 'Validator'.
@@ -540,10 +562,10 @@ Success (Right 4)
 >>> runVP (right' vpFromInput) (Left "x" :: Either String Int)
 Success (Left "x")
 -}
-instance (Semigroup err) => Choice (ValidatorProfunctor err) where
-  left' (ValidatorProfunctor f) = ValidatorProfunctor (either (fmap Left . f) (pure . Right))
+instance Choice (ValidatorProfunctor err) where
+  left' (ValidatorProfunctor f) = ValidatorProfunctor (either (fmap Left . f) (Success . Right))
   {-# INLINE left' #-}
-  right' (ValidatorProfunctor f) = ValidatorProfunctor (either (pure . Left) (fmap Right . f))
+  right' (ValidatorProfunctor f) = ValidatorProfunctor (either (Success . Left) (fmap Right . f))
   {-# INLINE right' #-}
 
 {- |
@@ -567,12 +589,17 @@ instance Sieve (ValidatorProfunctor err) (Validation err) where
   sieve (ValidatorProfunctor f) = f
   {-# INLINE sieve #-}
 
-{- |
+{- | Like 'Validation', a failure is kept: for each input, the result fails
+where the validator fails, and otherwise succeeds with @f@ applied to the validator.
+
 >>> runVP (extended (\_ -> 42) vpFromInput) 0
 Success 42
+
+>>> runVP (extended (\_ -> 42) (vpErr ["e"])) 0
+Failure ["e"]
 -}
 instance Extend (ValidatorProfunctor err x) where
-  extended f w@(ValidatorProfunctor _) = ValidatorProfunctor (\_ -> Success (f w))
+  extended f w@(ValidatorProfunctor g) = ValidatorProfunctor (\x -> f w <$ g x)
   {-# INLINE extended #-}
 
 {- |
@@ -627,7 +654,7 @@ class ReviewValidatorProfunctor s err x a | s -> err x a where
   reviewValidatorProfunctor :: Review s (ValidatorProfunctor err x a)
 
 instance ReviewValidatorProfunctor (ValidatorProfunctor err x a) err x a where
-  reviewValidatorProfunctor = unto id
+  reviewValidatorProfunctor = id
   {-# INLINE reviewValidatorProfunctor #-}
 
 {- |
@@ -750,7 +777,7 @@ instance (Monad f) => Monad (ValidatorMonadT x err f) where
   ValidatorMonadT f >>= k = ValidatorMonadT (\x -> f x >>= \a -> let ValidatorMonadT g = k a in g x)
   {-# INLINE (>>=) #-}
 
-instance (Monad f, MonadFail f) => MonadFail (ValidatorMonadT x err f) where
+instance (MonadFail f) => MonadFail (ValidatorMonadT x err f) where
   fail = ValidatorMonadT . const . liftValidationMonadT . Prelude.fail
   {-# INLINE fail #-}
 
@@ -812,7 +839,10 @@ instance (Monad f) => Selective (ValidatorMonadT x err f) where
   select = selectM
   {-# INLINE select #-}
 
-{- |
+{- | Like 'Validation', a failure is kept: for each input, the result fails
+where the validator fails, and otherwise succeeds with @f@ applied to the validator.
+The effects of the validator are run.
+
 >>> import Data.Functor.Identity (Identity(..))
 >>> import Data.Validation.Validation (Validation(..))
 >>> import Data.Validation.ValidationMonad (ValidationMonadT(..))
@@ -820,9 +850,13 @@ instance (Monad f) => Selective (ValidatorMonadT x err f) where
 >>> let v = ValidatorMonadT (\_ -> ValidationMonadT (Identity (Success 1))) :: ValidatorMonadT Int [String] Identity Int
 >>> let ValidatorMonadT f = extended (\_ -> 42) v in let ValidationMonadT (Identity r) = f 0 in r
 Success 42
+
+>>> let e = ValidatorMonadT (\_ -> ValidationMonadT (Identity (Failure ["e"]))) :: ValidatorMonadT Int [String] Identity Int
+>>> let ValidatorMonadT f = extended (\_ -> 42) e in let ValidationMonadT (Identity r) = f 0 in r
+Failure ["e"]
 -}
-instance (Monad f) => Extend (ValidatorMonadT x err f) where
-  extended f w@(ValidatorMonadT _) = ValidatorMonadT (\_ -> pure (f w))
+instance (Functor f) => Extend (ValidatorMonadT x err f) where
+  extended f w@(ValidatorMonadT g) = ValidatorMonadT (\x -> f w <$ g x)
   {-# INLINE extended #-}
 
 {- |
@@ -955,7 +989,7 @@ class ReviewValidatorMonadT s x err f a | s -> x err f a where
   reviewValidatorMonadT :: Review s (ValidatorMonadT x err f a)
 
 instance ReviewValidatorMonadT (ValidatorMonadT x err f a) x err f a where
-  reviewValidatorMonadT = unto id
+  reviewValidatorMonadT = id
   {-# INLINE reviewValidatorMonadT #-}
 
 class (ReviewValidatorMonadT s x err f a) => AsValidatorMonadT s x err f a | s -> x err f a where
@@ -1192,7 +1226,7 @@ instance (Monad f) => Traversing (ValidatorMonadProfunctorT err f) where
 >>> r
 Success 4
 -}
-instance (Monad f) => Sieve (ValidatorMonadProfunctorT err f) (ValidationMonadT err f) where
+instance (Functor f) => Sieve (ValidatorMonadProfunctorT err f) (ValidationMonadT err f) where
   sieve (ValidatorMonadProfunctorT f) = f
   {-# INLINE sieve #-}
 
@@ -1300,16 +1334,24 @@ instance (Monad f, Monoid err) => ArrowPlus (ValidatorMonadProfunctorT err f) wh
   ValidatorMonadProfunctorT f <+> ValidatorMonadProfunctorT g = ValidatorMonadProfunctorT (\x -> f x <!> g x)
   {-# INLINE (<+>) #-}
 
-{- |
+{- | Like 'Validation', a failure is kept: for each input, the result fails
+where the validator fails, and otherwise succeeds with @f@ applied to the validator.
+The effects of the validator are run.
+
 >>> import Control.Lens(view, _Wrapped')
 >>> import Data.Functor.Extend(Extend(extended))
 >>> let v = ValidatorMonadProfunctorT (\x -> ValidationMonadT (Identity (Success (x + 1)))) :: ValidatorMonadProfunctorT [String] Identity Int Int
 >>> let ValidationMonadT (Identity r) = view _Wrapped' (extended (\_ -> 99) v) 3
 >>> r
 Success 99
+
+>>> let e = ValidatorMonadProfunctorT (\_ -> ValidationMonadT (Identity (Failure ["e"]))) :: ValidatorMonadProfunctorT [String] Identity Int Int
+>>> let ValidationMonadT (Identity r) = view _Wrapped' (extended (\_ -> 99) e) 3
+>>> r
+Failure ["e"]
 -}
-instance (Monad f) => Extend (ValidatorMonadProfunctorT err f x) where
-  extended f w@(ValidatorMonadProfunctorT _) = ValidatorMonadProfunctorT (\_ -> pure (f w))
+instance (Functor f) => Extend (ValidatorMonadProfunctorT err f x) where
+  extended f w@(ValidatorMonadProfunctorT g) = ValidatorMonadProfunctorT (\x -> f w <$ g x)
   {-# INLINE extended #-}
 
 {- |
@@ -1334,7 +1376,7 @@ instance (Applicative f, Monoid err) => Monoid (ValidatorMonadProfunctorT err f 
   mempty = ValidatorMonadProfunctorT (const mempty)
   {-# INLINE mempty #-}
 
-instance (Monad f, MonadFail f) => MonadFail (ValidatorMonadProfunctorT err f x) where
+instance (MonadFail f) => MonadFail (ValidatorMonadProfunctorT err f x) where
   fail = ValidatorMonadProfunctorT . const . liftValidationMonadT . Prelude.fail
   {-# INLINE fail #-}
 
@@ -1414,7 +1456,7 @@ class ReviewValidatorMonadProfunctorT s err f x a | s -> err f x a where
   reviewValidatorMonadProfunctorT :: Review s (ValidatorMonadProfunctorT err f x a)
 
 instance ReviewValidatorMonadProfunctorT (ValidatorMonadProfunctorT err f x a) err f x a where
-  reviewValidatorMonadProfunctorT = unto id
+  reviewValidatorMonadProfunctorT = id
   {-# INLINE reviewValidatorMonadProfunctorT #-}
 
 -- | Class for types that have a 'Prism'' to a 'ValidatorMonadProfunctorT'.
@@ -1429,82 +1471,108 @@ instance AsValidatorMonadProfunctorT (ValidatorMonadProfunctorT err f x a) err f
 -- Cross-type optics instances
 -- =============================
 
+-- Isomorphisms between the validator types, used by the cross-type instances.
+
+validatorToProfunctor :: Iso' (Validator x err a) (ValidatorProfunctor err x a)
+validatorToProfunctor = iso (\(Validator f) -> ValidatorProfunctor f) (\(ValidatorProfunctor f) -> Validator f)
+{-# INLINE validatorToProfunctor #-}
+
+monadToMonadProfunctor :: Iso' (ValidatorMonadT x err f a) (ValidatorMonadProfunctorT err f x a)
+monadToMonadProfunctor = iso (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f) (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f)
+{-# INLINE monadToMonadProfunctor #-}
+
+validatorToMonad :: Iso' (Validator x err a) (ValidatorMonad x err a)
+validatorToMonad = iso (\(Validator f) -> ValidatorMonadT (view validationMonad . f)) (\(ValidatorMonadT f) -> Validator (review validationMonad . f))
+{-# INLINE validatorToMonad #-}
+
+validatorToMonadProfunctor :: Iso' (Validator x err a) (ValidatorMonadProfunctor err x a)
+validatorToMonadProfunctor = validatorToMonad . monadToMonadProfunctor
+{-# INLINE validatorToMonadProfunctor #-}
+
+profunctorToMonad :: Iso' (ValidatorProfunctor err x a) (ValidatorMonad x err a)
+profunctorToMonad = from validatorToProfunctor . validatorToMonad
+{-# INLINE profunctorToMonad #-}
+
+profunctorToMonadProfunctor :: Iso' (ValidatorProfunctor err x a) (ValidatorMonadProfunctor err x a)
+profunctorToMonadProfunctor = from validatorToProfunctor . validatorToMonadProfunctor
+{-# INLINE profunctorToMonadProfunctor #-}
+
 -- Cross-type optics: Validator <-> ValidatorProfunctor
 
 instance GetValidator (ValidatorProfunctor err x a) x err a where
-  getValidator = iso (\(ValidatorProfunctor f) -> Validator f) (\(Validator f) -> ValidatorProfunctor f)
+  getValidator = from validatorToProfunctor
   {-# INLINE getValidator #-}
 
 instance HasValidator (ValidatorProfunctor err x a) x err a where
-  validator = iso (\(ValidatorProfunctor f) -> Validator f) (\(Validator f) -> ValidatorProfunctor f)
+  validator = from validatorToProfunctor
   {-# INLINE validator #-}
 
 instance ReviewValidator (ValidatorProfunctor err x a) x err a where
-  reviewValidator = unto (\(Validator f) -> ValidatorProfunctor f)
+  reviewValidator = from validatorToProfunctor
   {-# INLINE reviewValidator #-}
 
 instance AsValidator (ValidatorProfunctor err x a) x err a where
-  _Validator = iso (\(ValidatorProfunctor f) -> Validator f) (\(Validator f) -> ValidatorProfunctor f)
+  _Validator = from validatorToProfunctor
   {-# INLINE _Validator #-}
 
 instance GetValidatorProfunctor (Validator x err a) err x a where
-  getValidatorProfunctor = iso (\(Validator f) -> ValidatorProfunctor f) (\(ValidatorProfunctor f) -> Validator f)
+  getValidatorProfunctor = validatorToProfunctor
   {-# INLINE getValidatorProfunctor #-}
 
 instance HasValidatorProfunctor (Validator x err a) err x a where
-  validatorProfunctor = iso (\(Validator f) -> ValidatorProfunctor f) (\(ValidatorProfunctor f) -> Validator f)
+  validatorProfunctor = validatorToProfunctor
   {-# INLINE validatorProfunctor #-}
 
 instance ReviewValidatorProfunctor (Validator x err a) err x a where
-  reviewValidatorProfunctor = unto (\(ValidatorProfunctor f) -> Validator f)
+  reviewValidatorProfunctor = validatorToProfunctor
   {-# INLINE reviewValidatorProfunctor #-}
 
 instance AsValidatorProfunctor (Validator x err a) err x a where
-  _ValidatorProfunctor = iso (\(Validator f) -> ValidatorProfunctor f) (\(ValidatorProfunctor f) -> Validator f)
+  _ValidatorProfunctor = validatorToProfunctor
   {-# INLINE _ValidatorProfunctor #-}
 
 -- Cross-type optics: ValidatorMonadT <-> ValidatorMonadProfunctorT
 
 instance GetValidatorMonadT (ValidatorMonadProfunctorT err f x a) x err f a where
-  getValidatorMonadT = iso (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f) (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f)
+  getValidatorMonadT = from monadToMonadProfunctor
   {-# INLINE getValidatorMonadT #-}
 
 instance HasValidatorMonadT (ValidatorMonadProfunctorT err f x a) x err f a where
-  validatorMonadT = iso (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f) (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f)
+  validatorMonadT = from monadToMonadProfunctor
   {-# INLINE validatorMonadT #-}
 
 instance ReviewValidatorMonadT (ValidatorMonadProfunctorT err f x a) x err f a where
-  reviewValidatorMonadT = unto (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f)
+  reviewValidatorMonadT = from monadToMonadProfunctor
   {-# INLINE reviewValidatorMonadT #-}
 
 instance AsValidatorMonadT (ValidatorMonadProfunctorT err f x a) x err f a where
-  _ValidatorMonadT = iso (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f) (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f)
+  _ValidatorMonadT = from monadToMonadProfunctor
   {-# INLINE _ValidatorMonadT #-}
 
 instance GetValidatorMonadProfunctorT (ValidatorMonadT x err f a) err f x a where
-  getValidatorMonadProfunctorT = iso (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f) (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f)
+  getValidatorMonadProfunctorT = monadToMonadProfunctor
   {-# INLINE getValidatorMonadProfunctorT #-}
 
 instance HasValidatorMonadProfunctorT (ValidatorMonadT x err f a) err f x a where
-  validatorMonadProfunctorT = iso (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f) (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f)
+  validatorMonadProfunctorT = monadToMonadProfunctor
   {-# INLINE validatorMonadProfunctorT #-}
 
 instance ReviewValidatorMonadProfunctorT (ValidatorMonadT x err f a) err f x a where
-  reviewValidatorMonadProfunctorT = unto (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f)
+  reviewValidatorMonadProfunctorT = monadToMonadProfunctor
   {-# INLINE reviewValidatorMonadProfunctorT #-}
 
 instance AsValidatorMonadProfunctorT (ValidatorMonadT x err f a) err f x a where
-  _ValidatorMonadProfunctorT = iso (\(ValidatorMonadT f) -> ValidatorMonadProfunctorT f) (\(ValidatorMonadProfunctorT f) -> ValidatorMonadT f)
+  _ValidatorMonadProfunctorT = monadToMonadProfunctor
   {-# INLINE _ValidatorMonadProfunctorT #-}
 
 -- Cross-type optics: Validator <-> ValidatorMonadT (f ~ Identity)
 
 instance GetValidator (ValidatorMonadT x err Identity a) x err a where
-  getValidator = iso (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  getValidator = from validatorToMonad
   {-# INLINE getValidator #-}
 
 instance HasValidator (ValidatorMonadT x err Identity a) x err a where
-  validator = iso (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  validator = from validatorToMonad
   {-# INLINE validator #-}
 
 instance (Applicative f) => ReviewValidator (ValidatorMonadT x err f a) x err a where
@@ -1512,33 +1580,33 @@ instance (Applicative f) => ReviewValidator (ValidatorMonadT x err f a) x err a 
   {-# INLINE reviewValidator #-}
 
 instance AsValidator (ValidatorMonadT x err Identity a) x err a where
-  _Validator = iso (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  _Validator = from validatorToMonad
   {-# INLINE _Validator #-}
 
 instance GetValidatorMonadT (Validator x err a) x err Identity a where
-  getValidatorMonadT = iso (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  getValidatorMonadT = validatorToMonad
   {-# INLINE getValidatorMonadT #-}
 
 instance HasValidatorMonadT (Validator x err a) x err Identity a where
-  validatorMonadT = iso (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  validatorMonadT = validatorToMonad
   {-# INLINE validatorMonadT #-}
 
 instance ReviewValidatorMonadT (Validator x err a) x err Identity a where
-  reviewValidatorMonadT = unto (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  reviewValidatorMonadT = validatorToMonad
   {-# INLINE reviewValidatorMonadT #-}
 
 instance AsValidatorMonadT (Validator x err a) x err Identity a where
-  _ValidatorMonadT = iso (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  _ValidatorMonadT = validatorToMonad
   {-# INLINE _ValidatorMonadT #-}
 
 -- Cross-type optics: ValidatorProfunctor <-> ValidatorMonadProfunctorT (f ~ Identity)
 
 instance GetValidatorProfunctor (ValidatorMonadProfunctorT err Identity x a) err x a where
-  getValidatorProfunctor = iso (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  getValidatorProfunctor = from profunctorToMonadProfunctor
   {-# INLINE getValidatorProfunctor #-}
 
 instance HasValidatorProfunctor (ValidatorMonadProfunctorT err Identity x a) err x a where
-  validatorProfunctor = iso (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  validatorProfunctor = from profunctorToMonadProfunctor
   {-# INLINE validatorProfunctor #-}
 
 instance (Applicative f) => ReviewValidatorProfunctor (ValidatorMonadProfunctorT err f x a) err x a where
@@ -1546,33 +1614,33 @@ instance (Applicative f) => ReviewValidatorProfunctor (ValidatorMonadProfunctorT
   {-# INLINE reviewValidatorProfunctor #-}
 
 instance AsValidatorProfunctor (ValidatorMonadProfunctorT err Identity x a) err x a where
-  _ValidatorProfunctor = iso (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  _ValidatorProfunctor = from profunctorToMonadProfunctor
   {-# INLINE _ValidatorProfunctor #-}
 
 instance GetValidatorMonadProfunctorT (ValidatorProfunctor err x a) err Identity x a where
-  getValidatorMonadProfunctorT = iso (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  getValidatorMonadProfunctorT = profunctorToMonadProfunctor
   {-# INLINE getValidatorMonadProfunctorT #-}
 
 instance HasValidatorMonadProfunctorT (ValidatorProfunctor err x a) err Identity x a where
-  validatorMonadProfunctorT = iso (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  validatorMonadProfunctorT = profunctorToMonadProfunctor
   {-# INLINE validatorMonadProfunctorT #-}
 
 instance ReviewValidatorMonadProfunctorT (ValidatorProfunctor err x a) err Identity x a where
-  reviewValidatorMonadProfunctorT = unto (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  reviewValidatorMonadProfunctorT = profunctorToMonadProfunctor
   {-# INLINE reviewValidatorMonadProfunctorT #-}
 
 instance AsValidatorMonadProfunctorT (ValidatorProfunctor err x a) err Identity x a where
-  _ValidatorMonadProfunctorT = iso (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  _ValidatorMonadProfunctorT = profunctorToMonadProfunctor
   {-# INLINE _ValidatorMonadProfunctorT #-}
 
 -- Cross-type optics: Validator <-> ValidatorMonadProfunctorT (f ~ Identity)
 
 instance GetValidator (ValidatorMonadProfunctorT err Identity x a) x err a where
-  getValidator = iso (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  getValidator = from validatorToMonadProfunctor
   {-# INLINE getValidator #-}
 
 instance HasValidator (ValidatorMonadProfunctorT err Identity x a) x err a where
-  validator = iso (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  validator = from validatorToMonadProfunctor
   {-# INLINE validator #-}
 
 instance (Applicative f) => ReviewValidator (ValidatorMonadProfunctorT err f x a) x err a where
@@ -1580,33 +1648,33 @@ instance (Applicative f) => ReviewValidator (ValidatorMonadProfunctorT err f x a
   {-# INLINE reviewValidator #-}
 
 instance AsValidator (ValidatorMonadProfunctorT err Identity x a) x err a where
-  _Validator = iso (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  _Validator = from validatorToMonadProfunctor
   {-# INLINE _Validator #-}
 
 instance GetValidatorMonadProfunctorT (Validator x err a) err Identity x a where
-  getValidatorMonadProfunctorT = iso (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  getValidatorMonadProfunctorT = validatorToMonadProfunctor
   {-# INLINE getValidatorMonadProfunctorT #-}
 
 instance HasValidatorMonadProfunctorT (Validator x err a) err Identity x a where
-  validatorMonadProfunctorT = iso (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  validatorMonadProfunctorT = validatorToMonadProfunctor
   {-# INLINE validatorMonadProfunctorT #-}
 
 instance ReviewValidatorMonadProfunctorT (Validator x err a) err Identity x a where
-  reviewValidatorMonadProfunctorT = unto (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  reviewValidatorMonadProfunctorT = validatorToMonadProfunctor
   {-# INLINE reviewValidatorMonadProfunctorT #-}
 
 instance AsValidatorMonadProfunctorT (Validator x err a) err Identity x a where
-  _ValidatorMonadProfunctorT = iso (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  _ValidatorMonadProfunctorT = validatorToMonadProfunctor
   {-# INLINE _ValidatorMonadProfunctorT #-}
 
 -- Cross-type optics: ValidatorProfunctor <-> ValidatorMonadT (f ~ Identity)
 
 instance GetValidatorProfunctor (ValidatorMonadT x err Identity a) err x a where
-  getValidatorProfunctor = iso (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  getValidatorProfunctor = from profunctorToMonad
   {-# INLINE getValidatorProfunctor #-}
 
 instance HasValidatorProfunctor (ValidatorMonadT x err Identity a) err x a where
-  validatorProfunctor = iso (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  validatorProfunctor = from profunctorToMonad
   {-# INLINE validatorProfunctor #-}
 
 instance (Applicative f) => ReviewValidatorProfunctor (ValidatorMonadT x err f a) err x a where
@@ -1614,23 +1682,23 @@ instance (Applicative f) => ReviewValidatorProfunctor (ValidatorMonadT x err f a
   {-# INLINE reviewValidatorProfunctor #-}
 
 instance AsValidatorProfunctor (ValidatorMonadT x err Identity a) err x a where
-  _ValidatorProfunctor = iso (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  _ValidatorProfunctor = from profunctorToMonad
   {-# INLINE _ValidatorProfunctor #-}
 
 instance GetValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
-  getValidatorMonadT = iso (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  getValidatorMonadT = profunctorToMonad
   {-# INLINE getValidatorMonadT #-}
 
 instance HasValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
-  validatorMonadT = iso (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  validatorMonadT = profunctorToMonad
   {-# INLINE validatorMonadT #-}
 
 instance ReviewValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
-  reviewValidatorMonadT = unto (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  reviewValidatorMonadT = profunctorToMonad
   {-# INLINE reviewValidatorMonadT #-}
 
 instance AsValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
-  _ValidatorMonadT = iso (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  _ValidatorMonadT = profunctorToMonad
   {-# INLINE _ValidatorMonadT #-}
 
 -- ==================================
