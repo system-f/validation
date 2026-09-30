@@ -11,3 +11,4 @@ column-limit: none
 fixities:
   - "infixl 4 <.>"
   - "infixl 3 <!>"
+  - "infixl 6 -->"

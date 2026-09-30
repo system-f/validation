@@ -2,12 +2,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import Control.Applicative (liftA3)
-import Control.Lens (from, review, (#), (^.), (^?))
+import Control.Lens (from, review, (#), (^.), (^?), _Just, _Left, _Right)
 import Control.Monad (join, unless)
 import Data.Bifunctor (bimap)
 import Data.Bifunctor.Swap (swap)
 import Data.Functor.Alt (Alt ((<!>)))
 import Data.Functor.Apply (Apply ((<.>)))
+import Data.Functor.Identity (Identity (..))
 import Data.Validation
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -61,6 +62,22 @@ main = do
         , ("prop_either_asSuccess_miss", prop_either_asSuccess_miss)
         , ("prop_either_failure_roundtrip", prop_either_failure_roundtrip)
         , ("prop_either_success_roundtrip", prop_either_success_roundtrip)
+        , ("prop_match_hit", prop_match_hit)
+        , ("prop_match_miss", prop_match_miss)
+        , ("prop_match_validatorProfunctor", prop_match_validatorProfunctor)
+        , ("prop_match_validatorMonad", prop_match_validatorMonad)
+        , ("prop_match_validatorMonadProfunctor", prop_match_validatorMonadProfunctor)
+        , ("prop_match_alt", prop_match_alt)
+        , ("prop_matchValidator_alt", prop_matchValidator_alt)
+        , ("prop_matchValidatorProfunctor_alt", prop_matchValidatorProfunctor_alt)
+        , ("prop_matchValidatorMonad_alt", prop_matchValidatorMonad_alt)
+        , ("prop_matchValidatorMonadProfunctor_alt", prop_matchValidatorMonadProfunctor_alt)
+        , ("prop_arrow_fmap_match", prop_arrow_fmap_match)
+        , ("prop_arrow_id_match", prop_arrow_id_match)
+        , ("prop_arrow_validator_alt", prop_arrow_validator_alt)
+        , ("prop_arrow_validatorProfunctor_alt", prop_arrow_validatorProfunctor_alt)
+        , ("prop_arrow_validatorMonad_alt", prop_arrow_validatorMonad_alt)
+        , ("prop_arrow_validatorMonadProfunctor_alt", prop_arrow_validatorMonadProfunctor_alt)
         ]
 
   unless result exitFailure
@@ -343,3 +360,143 @@ prop_either_success_roundtrip =
     case x of
       Right a -> reviewed === Just a
       Left _ -> reviewed === Nothing
+
+-- match
+
+matchRight :: Validator (Prelude.Either [String] Int) (Prelude.Either [String] Int) Int
+matchRight = match _Right
+
+runValidator :: Validator x err a -> x -> Validation err a
+runValidator (Validator f) = f
+
+prop_match_hit :: Property
+prop_match_hit =
+  property $ do
+    a <- forAll genInt
+    runValidator matchRight (Right a) === Success a
+
+prop_match_miss :: Property
+prop_match_miss =
+  property $ do
+    e <- forAll genStrings
+    runValidator matchRight (Left e) === Failure (Left e)
+
+prop_match_validatorProfunctor :: Property
+prop_match_validatorProfunctor =
+  property $ do
+    x <- forAll (genEither genStrings genInt)
+    let ValidatorProfunctor f = match _Right :: ValidatorProfunctor (Prelude.Either [String] Int) (Prelude.Either [String] Int) Int
+    f x === runValidator matchRight x
+
+prop_match_validatorMonad :: Property
+prop_match_validatorMonad =
+  property $ do
+    x <- forAll (genEither genStrings genInt)
+    let ValidatorMonadT f = match _Right :: ValidatorMonad (Prelude.Either [String] Int) (Prelude.Either [String] Int) Int
+        ValidationMonadT (Identity r) = f x
+    r === runValidator matchRight x
+
+prop_match_validatorMonadProfunctor :: Property
+prop_match_validatorMonadProfunctor =
+  property $ do
+    x <- forAll (genEither genStrings genInt)
+    let ValidatorMonadProfunctorT f = match _Right :: ValidatorMonadProfunctor (Prelude.Either [String] Int) (Prelude.Either [String] Int) Int
+        ValidationMonadT (Identity r) = f x
+    r === runValidator matchRight x
+
+-- match with (<!>): one prism per constructor, the first match wins
+
+-- | The input used by the (<!>) properties: a Left, a Right Just, or a Right Nothing.
+type Input = Prelude.Either String (Maybe Int)
+
+genInput :: Gen Input
+genInput = genEither genString (Gen.maybe genInt)
+
+-- | The expected result: Left and Right Just match, Right Nothing matches neither prism.
+expected :: Input -> Validation Input String
+expected (Left s) = Success s
+expected (Right (Just n)) = Success (show n)
+expected i@(Right Nothing) = Failure i
+
+prop_match_alt :: Property
+prop_match_alt =
+  property $ do
+    i <- forAll genInput
+    let v = match _Left <!> (show <$> match (_Right Prelude.. _Just)) :: Validator Input Input String
+    runValidator v i === expected i
+
+prop_matchValidator_alt :: Property
+prop_matchValidator_alt =
+  property $ do
+    i <- forAll genInput
+    let v = matchValidator _Left <!> (show <$> matchValidator (_Right Prelude.. _Just))
+    runValidator v i === expected i
+
+prop_matchValidatorProfunctor_alt :: Property
+prop_matchValidatorProfunctor_alt =
+  property $ do
+    i <- forAll genInput
+    let ValidatorProfunctor f = matchValidatorProfunctor _Left <!> (show <$> matchValidatorProfunctor (_Right Prelude.. _Just))
+    f i === expected i
+
+prop_matchValidatorMonad_alt :: Property
+prop_matchValidatorMonad_alt =
+  property $ do
+    i <- forAll genInput
+    let ValidatorMonadT f = matchValidatorMonad _Left <!> (show <$> matchValidatorMonad (_Right Prelude.. _Just))
+        ValidationMonadT (Identity r) = f i
+    r === expected i
+
+prop_matchValidatorMonadProfunctor_alt :: Property
+prop_matchValidatorMonadProfunctor_alt =
+  property $ do
+    i <- forAll genInput
+    let ValidatorMonadProfunctorT f = matchValidatorMonadProfunctor _Left <!> (show <$> matchValidatorMonadProfunctor (_Right Prelude.. _Just))
+        ValidationMonadT (Identity r) = f i
+    r === expected i
+
+-- (-->): match a prism and map its focus, one case per constructor
+
+prop_arrow_fmap_match :: Property
+prop_arrow_fmap_match =
+  property $ do
+    i <- forAll genInput
+    let v = _Right Prelude.. _Just --> show :: Validator Input Input String
+    runValidator v i === runValidator (show <$> matchValidator (_Right Prelude.. _Just)) i
+
+prop_arrow_id_match :: Property
+prop_arrow_id_match =
+  property $ do
+    i <- forAll genInput
+    let v = _Left --> Prelude.id :: Validator Input Input String
+    runValidator v i === runValidator (matchValidator _Left) i
+
+prop_arrow_validator_alt :: Property
+prop_arrow_validator_alt =
+  property $ do
+    i <- forAll genInput
+    let v = _Left --> Prelude.id <!> _Right Prelude.. _Just --> show :: Validator Input Input String
+    runValidator v i === expected i
+
+prop_arrow_validatorProfunctor_alt :: Property
+prop_arrow_validatorProfunctor_alt =
+  property $ do
+    i <- forAll genInput
+    let ValidatorProfunctor f = _Left --> Prelude.id <!> _Right Prelude.. _Just --> show :: ValidatorProfunctor Input Input String
+    f i === expected i
+
+prop_arrow_validatorMonad_alt :: Property
+prop_arrow_validatorMonad_alt =
+  property $ do
+    i <- forAll genInput
+    let ValidatorMonadT f = _Left --> Prelude.id <!> _Right Prelude.. _Just --> show :: ValidatorMonad Input Input String
+        ValidationMonadT (Identity r) = f i
+    r === expected i
+
+prop_arrow_validatorMonadProfunctor_alt :: Property
+prop_arrow_validatorMonadProfunctor_alt =
+  property $ do
+    i <- forAll genInput
+    let ValidatorMonadProfunctorT f = _Left --> Prelude.id <!> _Right Prelude.. _Just --> show :: ValidatorMonadProfunctor Input Input String
+        ValidationMonadT (Identity r) = f i
+    r === expected i

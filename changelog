@@ -1,3 +1,28 @@
+1.3.1
+
+* Change the Alt instance for Validator to be like Either: the first
+  Success wins, otherwise the second Failure is returned. The Semigroup
+  constraint is removed
+* Remove the Plus and Alternative instances for Validator
+* Add (-->), constructing any validator from a prism and a function on
+  its focus, so that validators can be written one case per constructor
+  (infixl 6, binding tighter than <!>)
+* Add match, constructing any validator from a prism, and its
+  specialisations matchValidator, matchValidatorProfunctor,
+  matchValidatorMonad and matchValidatorMonadProfunctor
+* Add the missing cross-type optics instances between Validator and
+  ValidatorMonadProfunctorT, and between ValidatorProfunctor and
+  ValidatorMonadT
+* Generalise the ReviewValidator and ReviewValidatorProfunctor instances
+  for ValidatorMonadT and ValidatorMonadProfunctorT from Identity to any
+  Applicative
+* Add hedgehog property tests for match and its specialisations
+* Raise dependency lower bounds to the oldest versions that build on
+  GHC 9.6 (base >= 4.18, lens >= 5.2.1, semigroupoids >= 6.0.0.1, ...),
+  and check them in CI with lower-bounds.project
+* Remove GHC 9.0.1 from CI, and build with GHC 9.6.7, 9.8.4 and 9.10.3
+* Add bin/lint.sh, running hlint and fourmolu, and check it in CI
+
 1.3.0
 
 * Replace ormolu with fourmolu

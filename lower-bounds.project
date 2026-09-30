@@ -1,0 +1,24 @@
+-- Build with the lower bounds of every direct dependency in validation.cabal.
+-- base ==4.18.* selects the oldest supported GHC, 9.6. Used by the
+-- lower-bounds job in CI:
+--
+--   cabal build --project-file=lower-bounds.project
+
+packages:
+  ./
+
+tests: True
+
+constraints:
+  assoc         ==1.1,
+  base          ==4.18.*,
+  bifunctors    ==5.6,
+  deepseq       ==1.4.8.1,
+  hedgehog      ==1.2,
+  lens          ==5.2.1,
+  mtl           ==2.3.1,
+  process       ==1.6.19.0,
+  profunctors   ==5.6.2,
+  selective     ==0.7,
+  semigroupoids ==6.0.0.1,
+  transformers  ==0.6.1.0

@@ -62,12 +62,20 @@ module Data.Validation.Validator (
   -- ** Classy prisms
   ReviewValidatorMonadProfunctorT (..),
   AsValidatorMonadProfunctorT (..),
+
+  -- * Constructing validators from prisms
+  (-->),
+  match,
+  matchValidator,
+  matchValidatorProfunctor,
+  matchValidatorMonad,
+  matchValidatorMonadProfunctor,
 ) where
 
 import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Arrow (Arrow (arr, first), ArrowApply (app), ArrowChoice (left, right), ArrowPlus ((<+>)), ArrowZero (zeroArrow))
 import Control.Category (Category (..))
-import Control.Lens (Getter, Lens', Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), unto)
+import Control.Lens (APrism, Getter, Lens', Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), matching, review, unto)
 import Control.Lens.Iso (iso)
 import Control.Monad (MonadPlus, ap, (>=>))
 import Control.Monad.Cont.Class (MonadCont (callCC))
@@ -93,6 +101,7 @@ import Data.Profunctor.Sieve (Sieve (sieve))
 import Data.Profunctor.Traversing (Traversing (traverse', wander))
 import Data.Semigroupoid (Semigroupoid (o))
 import Data.Validation.Validation (Validation (..))
+import qualified Data.Validation.Validation as Validation
 import Data.Validation.ValidationMonad (ValidationMonadT (..), liftValidationMonadT)
 import GHC.Generics (Generic)
 import Prelude hiding (id, (.))
@@ -119,9 +128,11 @@ import Prelude hiding (id, (.))
 >>> import Control.Selective(Selective(select))
 >>> import Control.Monad.Error.Class(MonadError(throwError, catchError))
 >>> import Control.Monad.Trans.Class(MonadTrans(lift))
->>> import Control.Lens(view, review, _Wrapped', (^?))
+>>> import Control.Lens(view, review, _Wrapped', (^?), _Just, _Left, _Right)
 >>> import Prelude hiding (id, (.))
 >>> :set -w
+>>> let runV (Validator f) = f
+>>> let runVM v x = let ValidatorMonadT f = v in let ValidationMonadT (Identity r) = f x in r
 >>> let runVP (ValidatorProfunctor f) = f
 >>> let vpOk x = ValidatorProfunctor (\_ -> Success x) :: ValidatorProfunctor [String] Int Int
 >>> let vpErr e = ValidatorProfunctor (\_ -> Failure e) :: ValidatorProfunctor [String] Int Int
@@ -207,42 +218,38 @@ instance (Semigroup err) => Applicative (Validator x err) where
   Validator f <*> Validator g = Validator (\x -> f x <.> g x)
   {-# INLINE (<*>) #-}
 
-{- | First success wins; two failures accumulate.
+{- | First success wins, like 'Either'; if both fail, the second failure is returned.
+Errors are not accumulated, so no 'Semigroup' constraint is required.
 
 >>> import Data.Functor.Alt(Alt((<!>)))
+>>> let Validator f = (Validator (\_ -> Success 1) :: Validator Int [String] Int) <!> Validator (\_ -> Success 2)
+>>> f 0
+Success 1
+
+>>> let Validator f = (Validator (\_ -> Success 1) :: Validator Int [String] Int) <!> Validator (\_ -> Failure ["e2"])
+>>> f 0
+Success 1
+
 >>> let Validator f = (Validator (\_ -> Failure ["e1"]) :: Validator Int [String] Int) <!> Validator (\_ -> Success 2)
 >>> f 0
 Success 2
 
 >>> let Validator f = (Validator (\_ -> Failure ["e1"]) :: Validator Int [String] Int) <!> Validator (\_ -> Failure ["e2"])
 >>> f 0
-Failure ["e1","e2"]
+Failure ["e2"]
+
+>>> let Validator f = (Validator (\_ -> Failure 1) :: Validator Int Int Int) <!> Validator (\_ -> Failure 2)
+>>> f 0
+Failure 2
 -}
-instance (Semigroup err) => Alt (Validator x err) where
-  Validator f <!> Validator g = Validator (\x -> f x <!> g x)
+instance Alt (Validator x err) where
+  Validator f <!> Validator g =
+    Validator
+      ( \x -> case f x of
+          Failure _ -> g x
+          s@(Success _) -> s
+      )
   {-# INLINE (<!>) #-}
-
-{- |
->>> import Data.Functor.Alt(Alt((<!>)))
->>> import Data.Functor.Plus(Plus(zero))
->>> let Validator f = (zero :: Validator Int [String] Int) <!> Validator (\_ -> Success 1)
->>> f 0
-Success 1
--}
-instance (Monoid err) => Plus (Validator x err) where
-  zero = Validator (\_ -> Failure mempty)
-  {-# INLINE zero #-}
-
-{- |
->>> let Validator f = (empty :: Validator Int [String] Int) <|> Validator (\_ -> Success 1)
->>> f 0
-Success 1
--}
-instance (Monoid err) => Alternative (Validator x err) where
-  empty = zero
-  {-# INLINE empty #-}
-  (<|>) = (<!>)
-  {-# INLINE (<|>) #-}
 
 {- |
 >>> import Control.Selective(Selective(select))
@@ -1500,8 +1507,8 @@ instance HasValidator (ValidatorMonadT x err Identity a) x err a where
   validator = iso (\(ValidatorMonadT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
   {-# INLINE validator #-}
 
-instance ReviewValidator (ValidatorMonadT x err Identity a) x err a where
-  reviewValidator = unto (\(Validator f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+instance (Applicative f) => ReviewValidator (ValidatorMonadT x err f a) x err a where
+  reviewValidator = unto (\(Validator f) -> ValidatorMonadT (ValidationMonadT . pure . f))
   {-# INLINE reviewValidator #-}
 
 instance AsValidator (ValidatorMonadT x err Identity a) x err a where
@@ -1534,8 +1541,8 @@ instance HasValidatorProfunctor (ValidatorMonadProfunctorT err Identity x a) err
   validatorProfunctor = iso (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
   {-# INLINE validatorProfunctor #-}
 
-instance ReviewValidatorProfunctor (ValidatorMonadProfunctorT err Identity x a) err x a where
-  reviewValidatorProfunctor = unto (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+instance (Applicative f) => ReviewValidatorProfunctor (ValidatorMonadProfunctorT err f x a) err x a where
+  reviewValidatorProfunctor = unto (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . pure . f))
   {-# INLINE reviewValidatorProfunctor #-}
 
 instance AsValidatorProfunctor (ValidatorMonadProfunctorT err Identity x a) err x a where
@@ -1557,3 +1564,316 @@ instance ReviewValidatorMonadProfunctorT (ValidatorProfunctor err x a) err Ident
 instance AsValidatorMonadProfunctorT (ValidatorProfunctor err x a) err Identity x a where
   _ValidatorMonadProfunctorT = iso (\(ValidatorProfunctor f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
   {-# INLINE _ValidatorMonadProfunctorT #-}
+
+-- Cross-type optics: Validator <-> ValidatorMonadProfunctorT (f ~ Identity)
+
+instance GetValidator (ValidatorMonadProfunctorT err Identity x a) x err a where
+  getValidator = iso (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  {-# INLINE getValidator #-}
+
+instance HasValidator (ValidatorMonadProfunctorT err Identity x a) x err a where
+  validator = iso (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  {-# INLINE validator #-}
+
+instance (Applicative f) => ReviewValidator (ValidatorMonadProfunctorT err f x a) x err a where
+  reviewValidator = unto (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . pure . f))
+  {-# INLINE reviewValidator #-}
+
+instance AsValidator (ValidatorMonadProfunctorT err Identity x a) x err a where
+  _Validator = iso (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f))
+  {-# INLINE _Validator #-}
+
+instance GetValidatorMonadProfunctorT (Validator x err a) err Identity x a where
+  getValidatorMonadProfunctorT = iso (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE getValidatorMonadProfunctorT #-}
+
+instance HasValidatorMonadProfunctorT (Validator x err a) err Identity x a where
+  validatorMonadProfunctorT = iso (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE validatorMonadProfunctorT #-}
+
+instance ReviewValidatorMonadProfunctorT (Validator x err a) err Identity x a where
+  reviewValidatorMonadProfunctorT = unto (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE reviewValidatorMonadProfunctorT #-}
+
+instance AsValidatorMonadProfunctorT (Validator x err a) err Identity x a where
+  _ValidatorMonadProfunctorT = iso (\(Validator f) -> ValidatorMonadProfunctorT (ValidationMonadT . Identity . f)) (\(ValidatorMonadProfunctorT f) -> Validator (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE _ValidatorMonadProfunctorT #-}
+
+-- Cross-type optics: ValidatorProfunctor <-> ValidatorMonadT (f ~ Identity)
+
+instance GetValidatorProfunctor (ValidatorMonadT x err Identity a) err x a where
+  getValidatorProfunctor = iso (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  {-# INLINE getValidatorProfunctor #-}
+
+instance HasValidatorProfunctor (ValidatorMonadT x err Identity a) err x a where
+  validatorProfunctor = iso (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  {-# INLINE validatorProfunctor #-}
+
+instance (Applicative f) => ReviewValidatorProfunctor (ValidatorMonadT x err f a) err x a where
+  reviewValidatorProfunctor = unto (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . pure . f))
+  {-# INLINE reviewValidatorProfunctor #-}
+
+instance AsValidatorProfunctor (ValidatorMonadT x err Identity a) err x a where
+  _ValidatorProfunctor = iso (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f)) (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f))
+  {-# INLINE _ValidatorProfunctor #-}
+
+instance GetValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
+  getValidatorMonadT = iso (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE getValidatorMonadT #-}
+
+instance HasValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
+  validatorMonadT = iso (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE validatorMonadT #-}
+
+instance ReviewValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
+  reviewValidatorMonadT = unto (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE reviewValidatorMonadT #-}
+
+instance AsValidatorMonadT (ValidatorProfunctor err x a) x err Identity a where
+  _ValidatorMonadT = iso (\(ValidatorProfunctor f) -> ValidatorMonadT (ValidationMonadT . Identity . f)) (\(ValidatorMonadT f) -> ValidatorProfunctor (runIdentity . (\(ValidationMonadT m) -> m) . f))
+  {-# INLINE _ValidatorMonadT #-}
+
+-- ==================================
+-- Constructing validators from prisms
+-- ==================================
+
+{- | Construct a validator from a prism, mapping the focus with a function.
+The validator succeeds with the function applied to the focus of the prism
+when it matches, and otherwise fails with the input, retyped to @t@ (see
+'Control.Lens.matching').
+
+@p --> f@ is @f '<$>' 'match' p@, and @'match' p@ is @p --> 'id'@. As with
+'match', the result can be any validator with a 'ReviewValidator' instance.
+
+>>> runV (_Just --> (+ 1) :: Validator (Maybe Int) (Maybe Int) Int) (Just 1)
+Success 2
+
+>>> runV (_Just --> (+ 1) :: Validator (Maybe Int) (Maybe Int) Int) Nothing
+Failure Nothing
+
+'-->' is @infixl 6@. It binds more loosely than '.', so prisms compose
+without parentheses, and more tightly than '<!>', so a validator can be
+written as one case per constructor. The first case that matches wins, and
+the input is returned as the failure if none match.
+
+>>> let v = _Left --> length <!> _Right . _Just --> negate :: Validator (Either String (Maybe Int)) (Either String (Maybe Int)) Int
+>>> runV v (Left "abc")
+Success 3
+
+>>> runV v (Right (Just 5))
+Success (-5)
+
+>>> runV v (Right Nothing)
+Failure (Right Nothing)
+
+The other validators are written the same way. Their '<!>' accumulates
+errors, which requires the input type to be a 'Semigroup' (here 'Either').
+
+>>> let v = _Left --> length <!> _Right . _Just --> negate :: ValidatorProfunctor (Either String (Maybe Int)) (Either String (Maybe Int)) Int
+>>> runVP v (Right (Just 5))
+Success (-5)
+
+>>> runVP v (Right Nothing)
+Failure (Right Nothing)
+
+>>> let v = _Left --> length <!> _Right . _Just --> negate :: ValidatorMonad (Either String (Maybe Int)) (Either String (Maybe Int)) Int
+>>> runVM v (Right (Just 5))
+Success (-5)
+
+>>> runVM v (Right Nothing)
+Failure (Right Nothing)
+
+>>> let v = _Left --> length <!> _Right . _Just --> negate :: ValidatorMonadProfunctor (Either String (Maybe Int)) (Either String (Maybe Int)) Int
+>>> runVMP v (Right (Just 5))
+Success (-5)
+
+>>> runVMP v (Right Nothing)
+Failure (Right Nothing)
+-}
+(-->) :: (ReviewValidator r s t a') => APrism s t a b -> (a -> a') -> r
+(-->) p f = review reviewValidator (f <$> Validator (review Validation.either . matching p))
+{-# INLINE (-->) #-}
+{-# SPECIALIZE (-->) :: APrism s t a b -> (a -> a') -> Validator s t a' #-}
+{-# SPECIALIZE (-->) :: APrism s t a b -> (a -> a') -> ValidatorProfunctor t s a' #-}
+{-# SPECIALIZE (-->) :: APrism s t a b -> (a -> a') -> ValidatorMonad s t a' #-}
+{-# SPECIALIZE (-->) :: APrism s t a b -> (a -> a') -> ValidatorMonadProfunctor t s a' #-}
+
+infixl 6 -->
+
+{- | Construct a validator from a prism. The validator succeeds with the
+focus of the prism when it matches, and otherwise fails with the input,
+retyped to @t@ (see 'Control.Lens.matching').
+
+The result can be any validator with a 'ReviewValidator' instance, which
+determines the validator type from the result type. @match p@ is
+@p '-->' 'id'@.
+
+>>> let Validator f = match _Just :: Validator (Maybe Int) (Maybe Int) Int
+>>> f (Just 3)
+Success 3
+
+>>> f Nothing
+Failure Nothing
+
+A type-changing prism fails with the retyped input.
+
+>>> let Validator f = match _Left :: Validator (Either Int String) (Either Bool String) Int
+>>> f (Left 1)
+Success 1
+
+>>> f (Right "x")
+Failure (Right "x")
+
+Match each constructor with its own prism, and combine the validators with
+'<!>'. The first prism that matches wins, and the input is returned as the
+failure if none match. The result type annotation chooses the validator; the
+specialisations 'matchValidator', 'matchValidatorProfunctor',
+'matchValidatorMonad' and 'matchValidatorMonadProfunctor' avoid it.
+
+>>> let v = match _Left <!> (show <$> match (_Right . _Just)) :: Validator (Either String (Maybe Int)) (Either String (Maybe Int)) String
+>>> runV v (Left "abc")
+Success "abc"
+
+>>> runV v (Right (Just 5))
+Success "5"
+
+>>> runV v (Right Nothing)
+Failure (Right Nothing)
+
+'ValidatorProfunctor' and 'ValidatorMonadProfunctorT' take the error type first.
+
+>>> let v = match _Left <!> (show <$> match (_Right . _Just)) :: ValidatorProfunctor (Either String (Maybe Int)) (Either String (Maybe Int)) String
+>>> runVP v (Right (Just 5))
+Success "5"
+
+>>> runVP v (Right Nothing)
+Failure (Right Nothing)
+
+>>> let v = match _Left <!> (show <$> match (_Right . _Just)) :: ValidatorMonad (Either String (Maybe Int)) (Either String (Maybe Int)) String
+>>> runVM v (Right (Just 5))
+Success "5"
+
+>>> runVM v (Right Nothing)
+Failure (Right Nothing)
+
+>>> let v = match _Left <!> (show <$> match (_Right . _Just)) :: ValidatorMonadProfunctor (Either String (Maybe Int)) (Either String (Maybe Int)) String
+>>> runVMP v (Right (Just 5))
+Success "5"
+
+>>> runVMP v (Right Nothing)
+Failure (Right Nothing)
+
+The monadic validators work with any 'Applicative'.
+
+>>> let ValidatorMonadT f = match _Just :: ValidatorMonadT (Maybe Int) (Maybe Int) [] Int
+>>> let ValidationMonadT r = f (Just 3) in r
+[Success 3]
+
+>>> let ValidatorMonadProfunctorT f = match _Just :: ValidatorMonadProfunctorT (Maybe Int) Maybe (Maybe Int) Int
+>>> let ValidationMonadT r = f Nothing in r
+Just (Failure Nothing)
+-}
+match :: (ReviewValidator r s t a) => APrism s t a b -> r
+match p = p --> id
+{-# INLINE match #-}
+{-# SPECIALIZE match :: APrism s t a b -> Validator s t a #-}
+{-# SPECIALIZE match :: APrism s t a b -> ValidatorProfunctor t s a #-}
+{-# SPECIALIZE match :: APrism s t a b -> ValidatorMonad s t a #-}
+{-# SPECIALIZE match :: APrism s t a b -> ValidatorMonadProfunctor t s a #-}
+
+{- | 'match' specialised to 'Validator', so no type annotation is needed.
+
+Combine one prism per constructor with '<!>'. 'Validator' does not accumulate
+errors, so the input type need not be a 'Semigroup'; if no prism matches, the
+last failure is returned.
+
+>>> let v = matchValidator _Left <!> (show <$> matchValidator (_Right . _Just))
+>>> runV v (Left "abc")
+Success "abc"
+
+>>> runV v (Right (Just 5))
+Success "5"
+
+>>> runV v (Right (Nothing :: Maybe Int))
+Failure (Right Nothing)
+
+>>> runV (matchValidator _Just) (Nothing :: Maybe Int)
+Failure Nothing
+-}
+matchValidator :: APrism s t a b -> Validator s t a
+matchValidator = match
+{-# INLINE matchValidator #-}
+
+{- | 'match' specialised to 'ValidatorProfunctor', so no type annotation is needed.
+
+The input type is also the error type, and '<!>' accumulates errors, so
+combining with '<!>' requires the input type to be a 'Semigroup' (here
+'Either').
+
+>>> let v = matchValidatorProfunctor _Left <!> (show <$> matchValidatorProfunctor (_Right . _Just))
+>>> runVP v (Left "abc")
+Success "abc"
+
+>>> runVP v (Right (Just 5))
+Success "5"
+
+>>> runVP v (Right (Nothing :: Maybe Int))
+Failure (Right Nothing)
+
+The input can be adapted with 'lmap'.
+
+>>> runVP (lmap Just (matchValidatorProfunctor _Just)) (3 :: Int)
+Success 3
+-}
+matchValidatorProfunctor :: APrism s t a b -> ValidatorProfunctor t s a
+matchValidatorProfunctor = match
+{-# INLINE matchValidatorProfunctor #-}
+
+{- | 'match' specialised to 'ValidatorMonad', so no type annotation is needed.
+
+Combining with '<!>' requires the input type to be a 'Semigroup' (here
+'Either'). The 'Monad' instance short-circuits, so a match can decide the
+next validator.
+
+>>> let v = matchValidatorMonad _Left <!> (show <$> matchValidatorMonad (_Right . _Just))
+>>> runVM v (Left "abc")
+Success "abc"
+
+>>> runVM v (Right (Just 5))
+Success "5"
+
+>>> runVM v (Right (Nothing :: Maybe Int))
+Failure (Right Nothing)
+
+>>> let w = matchValidatorMonad _Just >>= \n -> if n > (0 :: Int) then pure n else throwError (Just n)
+>>> runVM w (Just 3)
+Success 3
+
+>>> runVM w (Just (-3))
+Failure (Just (-3))
+
+>>> runVM w Nothing
+Failure Nothing
+-}
+matchValidatorMonad :: APrism s t a b -> ValidatorMonad s t a
+matchValidatorMonad = match
+{-# INLINE matchValidatorMonad #-}
+
+{- | 'match' specialised to 'ValidatorMonadProfunctor', so no type annotation is needed.
+
+Combining with '<!>' requires the input type to be a 'Semigroup' (here
+'Either').
+
+>>> let v = matchValidatorMonadProfunctor _Left <!> (show <$> matchValidatorMonadProfunctor (_Right . _Just))
+>>> runVMP v (Left "abc")
+Success "abc"
+
+>>> runVMP v (Right (Just 5))
+Success "5"
+
+>>> runVMP v (Right (Nothing :: Maybe Int))
+Failure (Right Nothing)
+-}
+matchValidatorMonadProfunctor :: APrism s t a b -> ValidatorMonadProfunctor t s a
+matchValidatorMonadProfunctor = match
+{-# INLINE matchValidatorMonadProfunctor #-}
