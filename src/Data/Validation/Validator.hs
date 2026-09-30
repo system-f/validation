@@ -70,13 +70,17 @@ module Data.Validation.Validator (
   matchValidatorProfunctor,
   matchValidatorMonad,
   matchValidatorMonadProfunctor,
+
+  -- * Constructing prisms from validators
+  (<--),
+  unmatch,
 ) where
 
 import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Arrow (Arrow (arr, first), ArrowApply (app), ArrowChoice (left, right), ArrowPlus ((<+>)), ArrowZero (zeroArrow))
 import Control.Category (Category (..))
-import Control.Lens (APrism, Getter, Lens', Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), from, matching, review, unto, view)
-import Control.Lens.Iso (Iso', iso)
+import Control.Lens (APrism, AReview, Getter, Lens', Prism, Prism', Review, Rewrapped, Wrapped (_Wrapped', type Unwrapped), from, matching, prism, review, unto, view)
+import Control.Lens.Iso (Iso', iso, mapping)
 import Control.Monad (MonadPlus, ap, (>=>))
 import Control.Monad.Cont.Class (MonadCont (callCC))
 import Control.Monad.Error.Class (MonadError (catchError, throwError))
@@ -1945,3 +1949,113 @@ Failure (Right Nothing)
 matchValidatorMonadProfunctor :: APrism s t a b -> ValidatorMonadProfunctor t s a
 matchValidatorMonadProfunctor = match
 {-# INLINE matchValidatorMonadProfunctor #-}
+
+-- ==================================
+-- Constructing prisms from validators
+-- ==================================
+
+{- | Construct a prism from a review and a validator. The prism matches
+when the validator succeeds, and otherwise returns the failure, retyped to
+@t@ (see 'Control.Lens.matching'). It is built with the review.
+
+'unmatch' is an inverse of 'match'. For a prism @p@, @'unmatch' p ('match' p)@
+is @p@, and for a validator @v@, @'match' ('unmatch' r v)@ is @v@. The prism
+is lawful when the validator succeeds with @b@ on @'review' r b@, and fails
+with its input otherwise.
+
+The result is a 'Prism', so it can be used directly with 'Control.Lens.^?',
+'review' and other optics, and the review can be any 'AReview', including a
+'Prism' or an 'Control.Lens.Iso'.
+
+The validator can be any validator with a 'GetValidator' instance.
+
+>>> import Control.Lens(Prism, matching, withPrism)
+>>> let positive = Validator (\n -> if n > 0 then Success n else Failure n) :: Validator Int Int Int
+>>> let p = unmatch id positive
+>>> matching p 5
+Right 5
+
+>>> matching p (-5)
+Left (-5)
+
+>>> 5 ^? p
+Just 5
+
+>>> review p 7
+7
+
+A type-changing prism.
+
+>>> let p = unmatch _Left (matchValidator _Left) :: Prism (Either Int String) (Either Bool String) Int Bool
+>>> matching p (Left 1)
+Right 1
+
+>>> matching p (Right "x")
+Left (Right "x")
+
+>>> withPrism p (\build _ -> build True)
+Left True
+
+'match' recovers the validator.
+
+>>> runV (matchValidator (unmatch _Just (matchValidator _Just))) (Just 3)
+Success 3
+
+>>> runV (matchValidator (unmatch _Just (matchValidator _Just))) (Nothing :: Maybe Int)
+Failure Nothing
+
+The other validators are written the same way.
+
+>>> let p = unmatch _Right (matchValidatorProfunctor _Right) :: Prism (Either String Int) (Either String Int) Int Int
+>>> matching p (Left "x")
+Left (Left "x")
+
+>>> let p = unmatch _Just (matchValidatorMonad _Just >>= \n -> if n > (0 :: Int) then pure n else throwError (Just n))
+>>> matching p (Just 3)
+Right 3
+
+>>> matching p (Just (-3))
+Left (Just (-3))
+
+>>> let p = unmatch _Just (matchValidatorMonadProfunctor _Just)
+>>> matching p (Nothing :: Maybe Int)
+Left Nothing
+-}
+unmatch :: (GetValidator v s t a) => AReview t b -> v -> Prism s t a b
+unmatch r v =
+  prism (review r) (view (getValidator . _Wrapped' . mapping Validation.either) v)
+{-# INLINE unmatch #-}
+{-# SPECIALIZE unmatch :: AReview t b -> Validator s t a -> Prism s t a b #-}
+{-# SPECIALIZE unmatch :: AReview t b -> ValidatorProfunctor t s a -> Prism s t a b #-}
+{-# SPECIALIZE unmatch :: AReview t b -> ValidatorMonad s t a -> Prism s t a b #-}
+{-# SPECIALIZE unmatch :: AReview t b -> ValidatorMonadProfunctor t s a -> Prism s t a b #-}
+
+{- | An operator for 'unmatch'. @r '<--' v@ is @'unmatch' r v@.
+
+'<--' is @infixr 2@. It binds more loosely than '.', '-->', '<$>' and
+'<!>', so the review and the validator can each be written without
+parentheses.
+
+>>> import Control.Lens(Prism, matching)
+>>> let p = _Right . _Just <-- length <$> matchValidator _Left <!> matchValidator (_Right . _Just) :: Prism (Either String (Maybe Int)) (Either String (Maybe Int)) Int Int
+>>> matching p (Left "abc")
+Right 3
+
+>>> matching p (Right (Just 5))
+Right 5
+
+>>> matching p (Right Nothing)
+Left (Right Nothing)
+
+>>> review p 7
+Right (Just 7)
+-}
+(<--) :: (GetValidator v s t a) => AReview t b -> v -> Prism s t a b
+(<--) = unmatch
+{-# INLINE (<--) #-}
+{-# SPECIALIZE (<--) :: AReview t b -> Validator s t a -> Prism s t a b #-}
+{-# SPECIALIZE (<--) :: AReview t b -> ValidatorProfunctor t s a -> Prism s t a b #-}
+{-# SPECIALIZE (<--) :: AReview t b -> ValidatorMonad s t a -> Prism s t a b #-}
+{-# SPECIALIZE (<--) :: AReview t b -> ValidatorMonadProfunctor t s a -> Prism s t a b #-}
+
+infixr 2 <--

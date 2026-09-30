@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import Control.Applicative (liftA3)
-import Control.Lens (from, review, (#), (^.), (^?), _Just, _Left, _Right)
+import Control.Lens (from, matching, review, (#), (^.), (^?), _Just, _Left, _Right)
 import Control.Monad (join, unless)
 import Data.Bifunctor (bimap)
 import Data.Bifunctor.Swap (swap)
@@ -78,6 +78,14 @@ main = do
         , ("prop_arrow_validatorProfunctor_alt", prop_arrow_validatorProfunctor_alt)
         , ("prop_arrow_validatorMonad_alt", prop_arrow_validatorMonad_alt)
         , ("prop_arrow_validatorMonadProfunctor_alt", prop_arrow_validatorMonadProfunctor_alt)
+        , ("prop_unmatch_match_matching", prop_unmatch_match_matching)
+        , ("prop_unmatch_match_review", prop_unmatch_match_review)
+        , ("prop_match_unmatch", prop_match_unmatch)
+        , ("prop_unmatch_validatorProfunctor", prop_unmatch_validatorProfunctor)
+        , ("prop_unmatch_validatorMonad", prop_unmatch_validatorMonad)
+        , ("prop_unmatch_validatorMonadProfunctor", prop_unmatch_validatorMonadProfunctor)
+        , ("prop_unmatch_arrow", prop_unmatch_arrow)
+        , ("prop_unmatch_arrow_alt", prop_unmatch_arrow_alt)
         ]
 
   unless result exitFailure
@@ -500,3 +508,62 @@ prop_arrow_validatorMonadProfunctor_alt =
     let ValidatorMonadProfunctorT f = _Left --> Prelude.id <!> _Right Prelude.. _Just --> show :: ValidatorMonadProfunctor Input Input String
         ValidationMonadT (Identity r) = f i
     r === expected i
+
+-- unmatch and (<--): construct a prism from a review and a validator
+
+-- | A validator that succeeds on a positive number, and fails with its input otherwise.
+positive :: Validator Int Int Int
+positive = Validator (\n -> if n > 0 then Success n else Failure n)
+
+-- | The expected match of positive.
+expectedPositive :: Int -> Prelude.Either Int Int
+expectedPositive n = if n > 0 then Right n else Left n
+
+prop_unmatch_match_matching :: Property
+prop_unmatch_match_matching =
+  property $ do
+    x <- forAll (genEither genStrings genInt)
+    matching (unmatch _Right matchRight) x === matching _Right x
+
+prop_unmatch_match_review :: Property
+prop_unmatch_match_review =
+  property $ do
+    a <- forAll genInt
+    review (unmatch _Right matchRight) a === (review _Right a :: Prelude.Either [String] Int)
+
+prop_match_unmatch :: Property
+prop_match_unmatch =
+  property $ do
+    n <- forAll genInt
+    runValidator (matchValidator (unmatch Prelude.id positive)) n === runValidator positive n
+
+prop_unmatch_validatorProfunctor :: Property
+prop_unmatch_validatorProfunctor =
+  property $ do
+    n <- forAll genInt
+    matching (unmatch Prelude.id (positive ^. validatorProfunctor)) n === expectedPositive n
+
+prop_unmatch_validatorMonad :: Property
+prop_unmatch_validatorMonad =
+  property $ do
+    n <- forAll genInt
+    matching (unmatch Prelude.id (positive ^. validatorMonadT)) n === expectedPositive n
+
+prop_unmatch_validatorMonadProfunctor :: Property
+prop_unmatch_validatorMonadProfunctor =
+  property $ do
+    n <- forAll genInt
+    matching (unmatch Prelude.id (positive ^. validatorMonadProfunctorT)) n === expectedPositive n
+
+prop_unmatch_arrow :: Property
+prop_unmatch_arrow =
+  property $ do
+    n <- forAll genInt
+    matching (Prelude.id <-- positive) n === matching (unmatch Prelude.id positive) n
+
+prop_unmatch_arrow_alt :: Property
+prop_unmatch_arrow_alt =
+  property $ do
+    i <- forAll genInput
+    let p = _Left <-- matchValidator _Left <!> show <$> matchValidator (_Right Prelude.. _Just)
+    matching p i === expected i ^. either
