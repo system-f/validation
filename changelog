@@ -1,3 +1,16 @@
+1.3.3
+
+* Add unmatch, constructing a prism from a review and any validator. It is
+  an inverse of match: unmatch p (match p) is p, and match (unmatch r v)
+  is v
+* Add (<--), an operator for unmatch (infixr 2, binding more loosely than
+  (.), (-->), <$> and <!>)
+* Depend on either-n
+* Add Injection1 and Injection2 instances (from either-n) for Validation,
+  where _I1 is the Failure constructor and _I2 is the Success constructor
+* Add Injection1 and Injection2 instances for ValidationMonad, the
+  Validation inside Identity
+
 1.3.2
 
 * Change the Extend instances for all four validators to keep failures,

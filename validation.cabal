@@ -1,5 +1,5 @@
 name:               validation
-version:            1.3.2
+version:            1.3.3
 license:            BSD3
 license-file:       LICENCE
 author:             Tony Morris <ʇǝu˙sıɹɹoɯʇ@ןןǝʞsɐɥ> <dibblego>, Nick Partridge <nkpart>
@@ -33,6 +33,8 @@ description:
     @makeClassyPrisms@ from @lens@.
   * Polymorphic prisms (@__Failure@, @__Success@) for type-changing operations.
   * Isomorphisms to @Either@ and @(Bool, a)@.
+  * @Injection1@ and @Injection2@ instances from @either-n@, so that
+    @_I1@ and @_I2@ are prisms to @Failure@ and @Success@.
   .
   == @ValidationMonadT@
   .
