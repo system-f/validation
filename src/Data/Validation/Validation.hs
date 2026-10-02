@@ -56,6 +56,7 @@ import Data.Functor.Apply (Apply ((<.>)))
 import Data.Functor.Classes (Eq1 (liftEq), Eq2 (liftEq2), Ord1 (liftCompare), Ord2 (liftCompare2), Show1 (liftShowsPrec), Show2 (liftShowsPrec2), showsUnaryWith)
 import Data.Functor.Extend (Extend (extended))
 import Data.Functor.Plus (Plus (zero))
+import Data.Lens.Injection (Injection1 (_I1), Injection2 (_I2))
 import Data.Semigroup.Traversable.Class (Bitraversable1 (bitraverse1))
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic, Generic1)
@@ -73,6 +74,7 @@ import Prelude hiding (either, id, (.))
 >>> import Data.Bifoldable(Bifoldable(bifoldr))
 >>> import Data.Bitraversable(Bitraversable(bitraverse))
 >>> import Data.Bifunctor.Swap(Swap(swap))
+>>> import Data.Lens.Injection(Injection1(_I1), Injection2(_I2))
 >>> :set -XNoMonomorphismRestriction -w
 -}
 
@@ -443,6 +445,44 @@ __Success =
         Success b -> Right b
     )
 {-# INLINE __Success #-}
+
+{- | The first constructor, 'Failure'. The same as '__Failure'.
+
+>>> import Control.Lens((^?), (#), over)
+>>> (Failure "err" :: Validation String Int) ^? _I1
+Just "err"
+
+>>> (Success 1 :: Validation String Int) ^? _I1
+Nothing
+
+>>> _I1 # "err" :: Validation String Int
+Failure "err"
+
+>>> over _I1 length (Failure "err" :: Validation String Int)
+Failure 3
+-}
+instance Injection1 (Validation a b) (Validation a' b) a a' where
+  _I1 = __Failure
+  {-# INLINE _I1 #-}
+
+{- | The second constructor, 'Success'. The same as '__Success'.
+
+>>> import Control.Lens((^?), (#), over)
+>>> (Success 1 :: Validation String Int) ^? _I2
+Just 1
+
+>>> (Failure "err" :: Validation String Int) ^? _I2
+Nothing
+
+>>> _I2 # 1 :: Validation String Int
+Success 1
+
+>>> over _I2 show (Success 1 :: Validation String Int)
+Success "1"
+-}
+instance Injection2 (Validation a b) (Validation a b') b b' where
+  _I2 = __Success
+  {-# INLINE _I2 #-}
 
 {- | Isomorphism between 'Validation' and 'Either'.
 

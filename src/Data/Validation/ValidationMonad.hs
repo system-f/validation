@@ -53,6 +53,7 @@ import Data.Functor.Classes (Eq1 (liftEq), Ord1 (liftCompare), Show1 (liftShowLi
 import Data.Functor.Extend (Extend (extended))
 import Data.Functor.Identity (Identity (..))
 import Data.Functor.Plus (Plus (zero))
+import Data.Lens.Injection (Injection1 (_I1), Injection2 (_I2))
 import Data.Validation.Validation (AsValidation (..), GetValidation (..), HasValidation (..), ReviewValidation (..), Validation (..), foldValidation)
 import qualified Data.Validation.Validation as Validation
 import GHC.Generics (Generic)
@@ -449,6 +450,38 @@ Success 1
 validationMonad :: Iso (Validation err a) (Validation err' a') (ValidationMonad err a) (ValidationMonad err' a')
 validationMonad = iso (ValidationMonadT . pure) (\(ValidationMonadT (Identity v)) -> v)
 {-# INLINE validationMonad #-}
+
+{- | The first constructor, 'Failure', of the 'Validation' inside 'Identity'.
+
+>>> import Control.Lens((^?), (#))
+>>> (ValidationMonadT (Identity (Failure "err")) :: ValidationMonad String Int) ^? _I1
+Just "err"
+
+>>> (ValidationMonadT (Identity (Success 1)) :: ValidationMonad String Int) ^? _I1
+Nothing
+
+>>> _I1 # "err" :: ValidationMonad String Int
+ValidationMonadT (Identity (Failure "err"))
+-}
+instance Injection1 (ValidationMonad err a) (ValidationMonad err' a) err err' where
+  _I1 = from validationMonad . _I1
+  {-# INLINE _I1 #-}
+
+{- | The second constructor, 'Success', of the 'Validation' inside 'Identity'.
+
+>>> import Control.Lens((^?), (#))
+>>> (ValidationMonadT (Identity (Success 1)) :: ValidationMonad String Int) ^? _I2
+Just 1
+
+>>> (ValidationMonadT (Identity (Failure "err")) :: ValidationMonad String Int) ^? _I2
+Nothing
+
+>>> _I2 # 1 :: ValidationMonad String Int
+ValidationMonadT (Identity (Success 1))
+-}
+instance Injection2 (ValidationMonad err a) (ValidationMonad err a') a a' where
+  _I2 = from validationMonad . _I2
+  {-# INLINE _I2 #-}
 
 -- Isomorphism between @Either err a@ and @ValidationMonad err a@.
 eitherValidationMonad :: Iso' (Either err a) (ValidationMonad err a)

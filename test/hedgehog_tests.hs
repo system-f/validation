@@ -2,13 +2,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import Control.Applicative (liftA3)
-import Control.Lens (from, matching, review, (#), (^.), (^?), _Just, _Left, _Right)
+import Control.Lens (APrism', clonePrism, from, matching, review, (#), (^.), (^?), _Just, _Left, _Right)
 import Control.Monad (join, unless)
 import Data.Bifunctor (bimap)
 import Data.Bifunctor.Swap (swap)
 import Data.Functor.Alt (Alt ((<!>)))
 import Data.Functor.Apply (Apply ((<.>)))
 import Data.Functor.Identity (Identity (..))
+import Data.Lens.Injection (_I1, _I2)
 import Data.Validation
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -51,6 +52,16 @@ main = do
         , ("prop_success_prism_miss", prop_success_prism_miss)
         , ("prop_poly_failure_prism", prop_poly_failure_prism)
         , ("prop_poly_success_prism", prop_poly_success_prism)
+        , ("prop_injection1_review_preview", prop_prism_review_preview (_I1 :: APrism' (Validation [String] Int) [String]) genStrings)
+        , ("prop_injection1_matching_review", prop_prism_matching_review _I1 testGen)
+        , ("prop_injection2_review_preview", prop_prism_review_preview (_I2 :: APrism' (Validation [String] Int) Int) genInt)
+        , ("prop_injection2_matching_review", prop_prism_matching_review _I2 testGen)
+        , ("prop_validationMonad_injection1_review_preview", prop_prism_review_preview (_I1 :: APrism' (ValidationMonad [String] Int) [String]) genStrings)
+        , ("prop_validationMonad_injection1_matching_review", prop_prism_matching_review _I1 testGenMonad)
+        , ("prop_validationMonad_injection2_review_preview", prop_prism_review_preview (_I2 :: APrism' (ValidationMonad [String] Int) Int) genInt)
+        , ("prop_validationMonad_injection2_matching_review", prop_prism_matching_review _I2 testGenMonad)
+        , ("prop_validationMonad_injection1_validation", prop_validationMonad_injection1_validation)
+        , ("prop_validationMonad_injection2_validation", prop_validationMonad_injection2_validation)
         , ("prop_swap_failure", prop_swap_failure)
         , ("prop_swap_success", prop_swap_success)
         , ("prop_swap_involution", prop_swap_involution)
@@ -106,6 +117,9 @@ genStrings = Gen.list (Range.linear 1 10) genString
 
 testGen :: Gen (Validation [String] Int)
 testGen = genValidation genStrings genInt
+
+testGenMonad :: Gen (ValidationMonad [String] Int)
+testGenMonad = fmap (^. validationMonad) testGen
 
 -- Semigroup / Monoid
 
@@ -287,6 +301,34 @@ prop_poly_success_prism =
     a <- forAll genInt
     let v = __Success # a :: Validation [String] Int
     v ^? __Success === Just a
+
+-- Injections
+
+-- | Prism law: previewing a reviewed value gives that value back.
+prop_prism_review_preview :: (Eq a, Show a) => APrism' s a -> Gen a -> Property
+prop_prism_review_preview p ga =
+  property $ do
+    a <- forAll ga
+    (clonePrism p # a) ^? clonePrism p === Just a
+
+-- | Prism law: reviewing a matched value gives the original back, and a miss is unchanged.
+prop_prism_matching_review :: (Eq s, Show s) => APrism' s a -> Gen s -> Property
+prop_prism_matching_review p gs =
+  property $ do
+    s <- forAll gs
+    Prelude.either Prelude.id (review (clonePrism p)) (matching p s) === s
+
+prop_validationMonad_injection1_validation :: Property
+prop_validationMonad_injection1_validation =
+  property $ do
+    v <- forAll testGen
+    (v ^. validationMonad) ^? _I1 === v ^? _I1
+
+prop_validationMonad_injection2_validation :: Property
+prop_validationMonad_injection2_validation =
+  property $ do
+    v <- forAll testGen
+    (v ^. validationMonad) ^? _I2 === v ^? _I2
 
 -- Swap
 
